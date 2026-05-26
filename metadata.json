@@ -1,0 +1,6 @@
+{
+  "name": "Buku Induk Siswa",
+  "description": "Aplikasi pencatatan data Buku Induk Siswa dengan fitur cetak lembar biodata lengkap, kelola foto, dan role-based akses untuk Admin dan Siswa.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
