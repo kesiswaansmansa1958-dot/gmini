@@ -30,13 +30,28 @@ import {
   RefreshCw,
   Eye,
   KeyRound,
-  GraduationCap
+  GraduationCap,
+  Database,
+  HelpCircle,
+  Check
 } from "lucide-react";
+import {
+  fetchStudentsFromSupabase,
+  fetchRequestsFromSupabase,
+  saveAllStudentsToSupabase,
+  saveAllRequestsToSupabase,
+  deleteStudentFromSupabase
+} from "./supabase";
 
 export default function App() {
   // Database states loaded from localStorage or fallback
   const [students, setStudents] = useState<Student[]>([]);
   const [requests, setRequests] = useState<CorrectionRequest[]>([]);
+
+  // Database sync states for Supabase
+  const [dbSyncStatus, setDbSyncStatus] = useState<"connecting" | "synced" | "saving" | "error" | "offline">("connecting");
+  const [dbErrorMessage, setDbErrorMessage] = useState<string | null>(null);
+  const [isSqlGuideOpen, setIsSqlGuideOpen] = useState(false);
   
   // Auth states
   const [role, setRole] = useState<AppRole>("GUEST");
@@ -56,35 +71,106 @@ export default function App() {
   const [isAddingStudent, setIsAddingStudent] = useState(false);
   const [isFilingRequestModal, setIsFilingRequestModal] = useState(false);
 
-  // Initialize and load Database on mount
+  // Initialize and load Database on mount with Supabase backend synchronization
   useEffect(() => {
-    const storedStudents = localStorage.getItem("buku_induk_students");
-    const storedRequests = localStorage.getItem("buku_induk_requests");
+    async function loadDataAndSync() {
+      setDbSyncStatus("connecting");
+      
+      try {
+        const sbStudents = await fetchStudentsFromSupabase();
+        const sbRequests = await fetchRequestsFromSupabase();
 
-    if (storedStudents) {
-      setStudents(JSON.parse(storedStudents));
-    } else {
-      localStorage.setItem("buku_induk_students", JSON.stringify(MOCK_STUDENTS));
-      setStudents(MOCK_STUDENTS);
+        if (sbStudents !== null && sbRequests !== null) {
+          // Connected successfully to Supabase!
+          if (sbStudents.length === 0 && sbRequests.length === 0) {
+            // Empty database detected: perform auto-seeding
+            console.info("Supabase connected but is empty. Seeding initial datasets...");
+            setDbSyncStatus("saving");
+            const seedStudsSucc = await saveAllStudentsToSupabase(MOCK_STUDENTS);
+            const seedReqsSucc = await saveAllRequestsToSupabase(INITIAL_CORRECTION_REQUESTS);
+
+            if (seedStudsSucc && seedReqsSucc) {
+              setStudents(MOCK_STUDENTS);
+              setRequests(INITIAL_CORRECTION_REQUESTS);
+              localStorage.setItem("buku_induk_students", JSON.stringify(MOCK_STUDENTS));
+              localStorage.setItem("buku_induk_requests", JSON.stringify(INITIAL_CORRECTION_REQUESTS));
+              setDbSyncStatus("synced");
+              setDbErrorMessage(null);
+            } else {
+              setDbSyncStatus("error");
+              setDbErrorMessage("Berhasil menyambung ke Supabase, namun seeding gagal karena kendala skema atau RLS.");
+              loadLocalFallback();
+            }
+          } else {
+            // Normal sync down from remote database
+            setStudents(sbStudents);
+            setRequests(sbRequests);
+            localStorage.setItem("buku_induk_students", JSON.stringify(sbStudents));
+            localStorage.setItem("buku_induk_requests", JSON.stringify(sbRequests));
+            setDbSyncStatus("synced");
+            setDbErrorMessage(null);
+          }
+        } else {
+          // Supabase returned null (tables do not exist or schema mismatch)
+          setDbSyncStatus("error");
+          setDbErrorMessage("Tabel di database Supabase belum diinisialisasi atau akses terblokir. Gunakan Panduan SQL Pembuatan Tabel.");
+          loadLocalFallback();
+        }
+      } catch (err) {
+        console.error("Critical error while connecting to Supabase during initialization:", err);
+        setDbSyncStatus("error");
+        setDbErrorMessage("Sambungan gagal ke Supabase. Menggunakan data cadangan lokal.");
+        loadLocalFallback();
+      }
     }
 
-    if (storedRequests) {
-      setRequests(JSON.parse(storedRequests));
-    } else {
-      localStorage.setItem("buku_induk_requests", JSON.stringify(INITIAL_CORRECTION_REQUESTS));
-      setRequests(INITIAL_CORRECTION_REQUESTS);
+    function loadLocalFallback() {
+      const storedStudents = localStorage.getItem("buku_induk_students");
+      const storedRequests = localStorage.getItem("buku_induk_requests");
+
+      if (storedStudents) {
+        setStudents(JSON.parse(storedStudents));
+      } else {
+        localStorage.setItem("buku_induk_students", JSON.stringify(MOCK_STUDENTS));
+        setStudents(MOCK_STUDENTS);
+      }
+
+      if (storedRequests) {
+        setRequests(JSON.parse(storedRequests));
+      } else {
+        localStorage.setItem("buku_induk_requests", JSON.stringify(INITIAL_CORRECTION_REQUESTS));
+        setRequests(INITIAL_CORRECTION_REQUESTS);
+      }
     }
+
+    loadDataAndSync();
   }, []);
 
-  // Save utility triggers helper
-  const saveStudents = (updatedList: Student[]) => {
+  // Save utilities with background Supabase replication
+  const saveStudents = async (updatedList: Student[]) => {
     setStudents(updatedList);
     localStorage.setItem("buku_induk_students", JSON.stringify(updatedList));
+
+    setDbSyncStatus("saving");
+    const succ = await saveAllStudentsToSupabase(updatedList);
+    if (succ) {
+      setDbSyncStatus("synced");
+    } else {
+      setDbSyncStatus("error");
+    }
   };
 
-  const saveRequests = (updatedReqs: CorrectionRequest[]) => {
+  const saveRequests = async (updatedReqs: CorrectionRequest[]) => {
     setRequests(updatedReqs);
     localStorage.setItem("buku_induk_requests", JSON.stringify(updatedReqs));
+
+    setDbSyncStatus("saving");
+    const succ = await saveAllRequestsToSupabase(updatedReqs);
+    if (succ) {
+      setDbSyncStatus("synced");
+    } else {
+      setDbSyncStatus("error");
+    }
   };
 
   // Login handler
@@ -273,12 +359,28 @@ export default function App() {
     setIsAddingStudent(false);
   };
 
-  const handleDeleteStudent = (id: string) => {
+  const handleDeleteStudent = async (id: string) => {
     const updated = students.filter((s) => s.id !== id);
     // Also clean up that student's pending requests
     const cleanedRequests = requests.filter((r) => r.studentId !== id);
-    saveStudents(updated);
-    saveRequests(cleanedRequests);
+    
+    // Optimistic local update
+    setStudents(updated);
+    setRequests(cleanedRequests);
+    localStorage.setItem("buku_induk_students", JSON.stringify(updated));
+    localStorage.setItem("buku_induk_requests", JSON.stringify(cleanedRequests));
+
+    setDbSyncStatus("saving");
+    const docDelSucc = await deleteStudentFromSupabase(id);
+    const reqsSucc = await saveAllRequestsToSupabase(cleanedRequests);
+    
+    if (docDelSucc && reqsSucc) {
+      setDbSyncStatus("synced");
+      showToast("Data siswa berhasil dihapus secara permanen dari database Supabase.", "success");
+    } else {
+      setDbSyncStatus("error");
+      showToast("Gagal menghapus data dari Supabase (Perubahan tersimpan secara lokal).", "warning");
+    }
   };
 
   const handleTogglePrintPermission = (id: string, allow: boolean) => {
@@ -434,6 +536,150 @@ export default function App() {
 
       {/* RENDER VIEW CONTROLLER */}
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 py-8 print:p-0">
+        
+        {/* Supabase Database Status Alert/Indicator Banner */}
+        <div className="mb-6 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 p-4.5 bg-white border border-gray-200 rounded-3xl shadow-sm print:hidden">
+          <div className="flex items-center gap-3.5">
+            <div className={`p-2.5 rounded-2xl flex items-center justify-center shrink-0 border ${
+              dbSyncStatus === "synced"
+                ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                : dbSyncStatus === "saving"
+                ? "bg-blue-50 text-blue-600 border-blue-100"
+                : dbSyncStatus === "connecting"
+                ? "bg-amber-50 text-amber-600 border-amber-100 animate-pulse"
+                : "bg-rose-50 text-rose-600 border-rose-100"
+            }`}>
+              {dbSyncStatus === "saving" ? (
+                <RefreshCw className="w-5 h-5 animate-spin" />
+              ) : (
+                <Database className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-black text-slate-800 font-sans uppercase tracking-wide">
+                  SINKRONISASI DATABASE SUPABASE
+                </h4>
+                <span className={`w-2 h-2 rounded-full ${
+                  dbSyncStatus === "synced"
+                    ? "bg-emerald-500 animate-pulse"
+                    : dbSyncStatus === "saving"
+                    ? "bg-blue-500 animate-pulse"
+                    : dbSyncStatus === "connecting"
+                    ? "bg-amber-500 animate-pulse"
+                    : "bg-rose-500"
+                }`} />
+              </div>
+              <p className="text-[11px] text-gray-500 font-medium mt-0.5">
+                {dbSyncStatus === "synced" && "Aplikasi terhubung & tersinkronisasi penuh dengan database Supabase (Live)."}
+                {dbSyncStatus === "saving" && "Sedang mengunggah dan mensinkronisasikan data ke database Supabase kesiswaan..."}
+                {dbSyncStatus === "connecting" && "Menyambungkan ke cluster kesiswaansmansa1958-dot's Project..."}
+                {dbSyncStatus === "error" && (dbErrorMessage || "Sesi cadangan lokal aktif.")}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-center">
+            <button
+              type="button"
+              onClick={() => setIsSqlGuideOpen(true)}
+              className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold font-sans text-[11px] rounded-xl flex items-center gap-1.5 transition whitespace-nowrap shadow-sm border border-slate-700 h-fit cursor-pointer"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              Skema SQL Supabase
+            </button>
+            {dbSyncStatus === "error" && (
+              <span className="text-[10px] bg-rose-50 border border-rose-100 text-rose-700 px-2.5 py-1.5 rounded-xl font-bold uppercase tracking-wider">
+                Mode Offline / Fallback Lokal
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* SQL Setup Instruction Modal Component */}
+        {isSqlGuideOpen && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl border border-gray-200 w-full max-w-3xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+              
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-150 bg-slate-50 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-blue-50 border border-blue-100 rounded-xl text-blue-600">
+                    <Database className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-black text-sm text-slate-900">
+                      Instruksi Pembuatan Tabel di Supabase
+                    </h3>
+                    <p className="text-[11.5px] text-gray-500 font-sans mt-0.5">
+                      Gunakan skrip di bawah ini untuk menginisialisasi database di panel SQL Editor Supabase Anda.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSqlGuideOpen(false)}
+                  className="p-1 px-3 bg-gray-100 hover:bg-gray-200 text-slate-700 font-semibold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Tutup Panduan
+                </button>
+              </div>
+
+              {/* Modal Content */}
+              <div className="p-6 overflow-y-auto space-y-4 font-sans text-xs text-slate-700 leading-relaxed">
+                <p>
+                  Agar aplikasi dapat melakukan penyimpanan data secara langsung dan persisten, silakan buka <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 font-bold underline">Dashboard Supabase</a> Anda (<strong className="text-slate-900">kesiswaansmansa1958-dot's Project</strong>), masuk ke menu <strong className="text-slate-900">SQL Editor</strong>, klik <strong className="text-slate-900">New Query</strong>, paste kode berikut, lalu klik <strong className="text-slate-900">Run</strong>:
+                </p>
+
+                <div className="p-4 bg-slate-900 text-slate-100 rounded-2xl font-mono text-xs overflow-x-auto border border-slate-800 space-y-1 select-all relative">
+                  <span className="absolute right-3 top-3 bg-slate-800 border border-slate-700 text-slate-400 font-sans text-[10px] px-2 py-1 rounded-lg">Copy-Paste Ke SQL Editor</span>
+                  <pre>{`-- SCRIPT DATABASE SIAKAD BUKU INDUK SISWA
+
+-- 1. Buat Tabel Siswa (buku_induk_students)
+create table if not exists public.buku_induk_students (
+    id text primary key,
+    data jsonb not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Aktifkan Row Level Security (RLS) serta buat kebijakan Bypass Akses Publik
+alter table public.buku_induk_students enable row level security;
+create policy "Akses Publik Universal Siswa" on public.buku_induk_students for all using (true);
+
+-- 2. Buat Tabel Pengajuan Revisi (buku_induk_requests)
+create table if not exists public.buku_induk_requests (
+    id text primary key,
+    data jsonb not null,
+    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.buku_induk_requests enable row level security;
+create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for all using (true);`}</pre>
+                </div>
+
+                <div className="p-4.5 bg-blue-50 border border-blue-150 rounded-2xl text-blue-900 flex items-start gap-2.5">
+                  <div className="shrink-0 p-1 bg-white border border-blue-200 text-blue-600 rounded-lg font-bold">INFO</div>
+                  <div>
+                    <span className="font-bold block mb-0.5 text-xs text-blue-950">Mengapa Menggunakan Skema JSONB?</span>
+                    Sistem portal e-Buku Induk menggunakan standard dokumen JSONB yang tersimpan secara terstruktur. Hal ini menjamin fleksibilitas penuh apabila nantinya terdapat form biodata di sub-form kesiswaan yang bertambah, tanpa perlu melakukan perubahan struktur kolom (alter table) yang merepotkan.
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 px-6 border-t border-gray-150 bg-slate-50 flex items-center justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsSqlGuideOpen(false)}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 font-sans font-bold text-white text-xs rounded-xl shadow-md transition cursor-pointer"
+                >
+                  Saya Mengerti
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
         
         {/* ========================================================= */}
         {/* VIEW 1: AUTHENTICATION ENTRANCE                           */}
