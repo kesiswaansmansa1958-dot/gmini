@@ -11,6 +11,7 @@ import { StudentForm } from "./components/StudentForm";
 import { StudentPrintView } from "./components/StudentPrintView";
 import { RequestManager } from "./components/RequestManager";
 import { CorrectionRequestModal } from "./components/CorrectionRequestModal";
+import { ExcelImporterModal } from "./components/ExcelImporterModal";
 import { 
   Building, 
   LogOut, 
@@ -33,7 +34,8 @@ import {
   GraduationCap,
   Database,
   HelpCircle,
-  Check
+  Check,
+  FileSpreadsheet
 } from "lucide-react";
 import {
   fetchStudentsFromSupabase,
@@ -42,6 +44,7 @@ import {
   saveAllRequestsToSupabase,
   deleteStudentFromSupabase
 } from "./supabase";
+import { exportDatabaseToExcel } from "./excelUtils";
 
 export default function App() {
   // Database states loaded from localStorage or fallback
@@ -69,6 +72,7 @@ export default function App() {
   const [selectedStudentForPrint, setSelectedStudentForPrint] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isImportExcelOpen, setIsImportExcelOpen] = useState(false);
   const [isFilingRequestModal, setIsFilingRequestModal] = useState(false);
 
   // Initialize and load Database on mount with Supabase backend synchronization
@@ -380,6 +384,70 @@ export default function App() {
     } else {
       setDbSyncStatus("error");
       showToast("Gagal menghapus data dari Supabase (Perubahan tersimpan secara lokal).", "warning");
+    }
+  };
+
+  const handleImportStudents = async (importedList: Student[], importStrategy: "UPSERT" | "REPLACE") => {
+    let updatedList: Student[] = [];
+
+    if (importStrategy === "REPLACE") {
+      updatedList = importedList;
+    } else {
+      // UPSERT strategy: merge by student ID, NISN, or NIS
+      const merged = [...students];
+      importedList.forEach((impStudent) => {
+        const existingIndex = merged.findIndex(
+          (ex) =>
+            ex.id === impStudent.id ||
+            (ex.personal.nisn && ex.personal.nisn === impStudent.personal.nisn) ||
+            (ex.personal.nis && ex.personal.nis === impStudent.personal.nis)
+        );
+
+        if (existingIndex !== -1) {
+          // Merge preserving existing properties that may not be in Excel
+          merged[existingIndex] = {
+            ...merged[existingIndex],
+            ...impStudent,
+            // deep merge personal/school/etc to avoid blanking subfields
+            personal: { ...merged[existingIndex].personal, ...impStudent.personal },
+            address: { ...merged[existingIndex].address, ...impStudent.address },
+            health: { ...merged[existingIndex].health, ...impStudent.health },
+            education: { ...merged[existingIndex].education, ...impStudent.education },
+            parents: { ...merged[existingIndex].parents, ...impStudent.parents },
+            guardian: { ...merged[existingIndex].guardian, ...impStudent.guardian },
+            school: { ...merged[existingIndex].school, ...impStudent.school },
+            foto: impStudent.foto || merged[existingIndex].foto,
+          };
+        } else {
+          merged.push(impStudent);
+        }
+      });
+      updatedList = merged;
+    }
+
+    // Update state & client storage
+    setStudents(updatedList);
+    localStorage.setItem("buku_induk_students", JSON.stringify(updatedList));
+
+    // Upload / sync directly online
+    setDbSyncStatus("saving");
+    const syncSucc = await saveAllStudentsToWarmSupabase(updatedList);
+    if (syncSucc) {
+      setDbSyncStatus("synced");
+      showToast(`Berhasil mengimpor ${importedList.length} data siswa ke database kesiswaan!`, "success");
+    } else {
+      setDbSyncStatus("error");
+      showToast(`Impor tersimpan lokal, namun gagal mengunggah ke Supabase. Periksa skema tabel.`, "warning");
+    }
+  };
+
+  // Helper with robust upsert fallback to warm Supabase
+  const saveAllStudentsToWarmSupabase = async (list: Student[]): Promise<boolean> => {
+    try {
+      const succ = await saveAllStudentsToSupabase(list);
+      return succ;
+    } catch {
+      return false;
     }
   };
 
@@ -886,35 +954,62 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
               </div>
 
               {/* TABS Toggling */}
-              <div className="flex bg-slate-100 p-1 rounded-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex bg-slate-100 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    id="tab-btn-students"
+                    onClick={() => setActiveAdminTab("daftar_siswa")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold font-sans transition ${
+                      activeAdminTab === "daftar_siswa"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    Daftar Siswa ({students.length})
+                  </button>
+                  <button
+                    type="button"
+                    id="tab-btn-corrections"
+                    onClick={() => setActiveAdminTab("pengajuan_revisi")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold font-sans transition flex items-center gap-1.5 ${
+                      activeAdminTab === "pengajuan_revisi"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    <span>Verifikasi Data</span>
+                    {requests.filter((r) => r.status === "Diproses").length > 0 && (
+                      <span className="w-5 h-5 bg-rose-600 font-mono text-[9px] font-black text-white rounded-full flex items-center justify-center animate-pulse">
+                        {requests.filter((r) => r.status === "Diproses").length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  id="tab-btn-students"
-                  onClick={() => setActiveAdminTab("daftar_siswa")}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold font-sans transition ${
-                    activeAdminTab === "daftar_siswa"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
+                  id="btn-export-excel"
+                  onClick={() => {
+                    exportDatabaseToExcel(students, requests);
+                    showToast("Database Buku Induk berhasil diekspor ke Excel!", "success");
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold font-sans rounded-xl flex items-center justify-center gap-2 shadow-sm transition cursor-pointer border border-emerald-550 shrink-0"
+                  title="Unduh seluruh database (Profil Siswa & Riwayat Revisi) ke Excel"
                 >
-                  Daftar Siswa ({students.length})
+                  <FileSpreadsheet className="w-4 h-4 text-white" />
+                  Unduh Excel (.xlsx)
                 </button>
+
                 <button
                   type="button"
-                  id="tab-btn-corrections"
-                  onClick={() => setActiveAdminTab("pengajuan_revisi")}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold font-sans transition flex items-center gap-1.5 ${
-                    activeAdminTab === "pengajuan_revisi"
-                      ? "bg-white text-slate-800 shadow-sm"
-                      : "text-gray-500 hover:text-gray-900"
-                  }`}
+                  id="btn-import-excel-trigger"
+                  onClick={() => setIsImportExcelOpen(true)}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold font-sans rounded-xl flex items-center justify-center gap-2 shadow-sm transition cursor-pointer border border-indigo-550 shrink-0"
+                  title="Impor list data siswa baru atau perbarui biodata massal dari Excel"
                 >
-                  <span>Verifikasi Data</span>
-                  {requests.filter((r) => r.status === "Diproses").length > 0 && (
-                    <span className="w-5 h-5 bg-rose-600 font-mono text-[9px] font-black text-white rounded-full flex items-center justify-center animate-pulse">
-                      {requests.filter((r) => r.status === "Diproses").length}
-                    </span>
-                  )}
+                  <FileSpreadsheet className="w-4 h-4 text-white" />
+                  Impor Excel (.xlsx)
                 </button>
               </div>
             </div>
@@ -1216,6 +1311,13 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
           onClose={() => setIsFilingRequestModal(false)}
         />
       )}
+
+      {/* 4. EXCEL DATABASE IMPORTER */}
+      <ExcelImporterModal
+        isOpen={isImportExcelOpen}
+        onClose={() => setIsImportExcelOpen(false)}
+        onImport={handleImportStudents}
+      />
 
       {/* 4. TOAST ALERTS DIALOG */}
       {toast && (

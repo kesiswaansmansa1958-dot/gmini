@@ -14,6 +14,11 @@ interface StudentFormProps {
 }
 
 const EMPTY_STUDENT: Omit<Student, "id"> = {
+  noPendaftaran: "",
+  nik: "",
+  noKk: "",
+  noKip: "",
+  idDtks: "",
   personal: {
     namaLengkap: "",
     namaPanggilan: "",
@@ -23,27 +28,29 @@ const EMPTY_STUDENT: Omit<Student, "id"> = {
     tempatLahir: "",
     tanggalLahir: "",
     agama: "Islam",
-    kewarganegaraan: "WNI",
-    anakKe: 1,
-    saudaraKandung: 0,
+    kewarganegaraan: "WNI (Warga Negara Indonesia)",
+    anakKe: 4,
+    saudaraKandung: 3,
     saudaraTiri: 0,
     saudaraAngkat: 0,
+    saudaraKembar: 0,
+    anakYatimPiatu: "Bukan Anak Yatim Piatu",
     statusKeluarga: "Lengkap",
-    bahasaSehariHari: "Bahasa Indonesia",
+    bahasaSehariHari: "bahasa indonesia",
   },
   address: {
     alamatLengkap: "",
     telepon: "",
     tinggalDengan: "Orang Tua",
-    jarakKeSekolah: "1",
+    jarakKeSekolah: "172 meter",
     transportasi: "Jalan Kaki",
   },
   health: {
-    golonganDarah: "O",
-    penyakitPernahDiderita: "-",
-    kelainanJasmani: "-",
-    tinggiBadan: 160,
-    beratBadan: 50,
+    golonganDarah: "Belum Tahu",
+    penyakitPernahDiderita: "Tidak Ada",
+    kelainanJasmani: "Tidak Ada",
+    tinggiBadan: 151,
+    beratBadan: 45,
   },
   education: {
     lulusanDari: "",
@@ -51,26 +58,44 @@ const EMPTY_STUDENT: Omit<Student, "id"> = {
     nomorIjazah: "",
     pindahanDari: "",
     alasanPindah: "",
+    lamaBelajar: "3 Tahun",
+    nilaiRerataSMP: {
+      agama: 90.2,
+      ppkn: 87.8,
+      bIndonesia: 90.6,
+      matematika: 86.2,
+      ipa: 89.4,
+      ips: 88.2,
+      bInggris: 87.8,
+    },
+    prestasiAkademik: "-",
+    prestasiNonAkademik: "-",
   },
   parents: {
     ayah: {
       nama: "",
+      nik: "",
+      tempatLahir: "",
+      tanggalLahir: "",
       agama: "Islam",
       kewarganegaraan: "WNI",
       pendidikan: "SMA",
       pekerjaan: "",
-      penghasilan: "Rp 1.000.000 - Rp 3.000.000",
+      penghasilan: "500.000,- s.d. < 1.000.000,-",
       alamat: "",
       telepon: "",
       isMasihHidup: true,
     },
     ibu: {
       nama: "",
+      nik: "",
+      tempatLahir: "",
+      tanggalLahir: "",
       agama: "Islam",
       kewarganegaraan: "WNI",
       pendidikan: "SMA",
       pekerjaan: "",
-      penghasilan: "Rp 1.000.000 - Rp 3.000.000",
+      penghasilan: "< 500.000,-",
       alamat: "",
       telepon: "",
       isMasihHidup: true,
@@ -79,6 +104,9 @@ const EMPTY_STUDENT: Omit<Student, "id"> = {
   guardian: {
     hasWali: false,
     nama: "",
+    nik: "",
+    tempatLahir: "",
+    tanggalLahir: "",
     agama: "Islam",
     kewarganegaraan: "WNI",
     pendidikan: "SMA",
@@ -95,16 +123,29 @@ const EMPTY_STUDENT: Omit<Student, "id"> = {
     beasiswa: "-",
     nomorStb: "",
   },
+  kegemaran: {
+    kesenian: "SENI RUPA",
+    olahraga: "BULUTANGKIS",
+    organisasi: "PECINTA ALAM",
+  },
   foto: "",
 };
 
 export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClose }) => {
   const isEdit = !!student;
   const [activeTab, setActiveTab] = useState<"pribadi" | "alamat_sehat" | "sekolah_pddk" | "keluarga">("pribadi");
-  const [formData, setFormData] = useState<Student | Omit<Student, "id">>(
-    student ? JSON.parse(JSON.stringify(student)) : JSON.parse(JSON.stringify(EMPTY_STUDENT))
-  );
+  const [formData, setFormData] = useState<Student | Omit<Student, "id">>({
+    ...JSON.parse(JSON.stringify(EMPTY_STUDENT)),
+    ...(student ? JSON.parse(JSON.stringify(student)) : {})
+  });
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const handleRootChange = (field: keyof Student, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
 
   const handlePersonalChange = (field: keyof typeof EMPTY_STUDENT.personal, value: any) => {
     setFormData((prev) => ({
@@ -483,6 +524,85 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                 </div>
               </div>
 
+              <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-widest border-t border-gray-100 pt-4">
+                Identitas Dokumen & Nomor Registrasi SMANSA
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">No. Pendaftaran PPDB</label>
+                  <input
+                    type="text"
+                    value={formData.noPendaftaran || ""}
+                    onChange={(e) => handleRootChange("noPendaftaran", e.target.value)}
+                    placeholder="Contoh: 0313258664169077"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">NIK Siswa / Murid</label>
+                  <input
+                    type="text"
+                    value={formData.nik || ""}
+                    onChange={(e) => handleRootChange("nik", e.target.value)}
+                    placeholder="16 digit NIK Nasional"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Nomor Kartu Keluarga (KK)</label>
+                  <input
+                    type="text"
+                    value={formData.noKk || ""}
+                    onChange={(e) => handleRootChange("noKk", e.target.value)}
+                    placeholder="16 digit No. KK"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">No. Kartu KIP (Jika ada)</label>
+                  <input
+                    type="text"
+                    value={formData.noKip || ""}
+                    onChange={(e) => handleRootChange("noKip", e.target.value)}
+                    placeholder="Tulis '-' jika tidak ada"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">ID Sosial DTKS</label>
+                  <input
+                    type="text"
+                    value={formData.idDtks || ""}
+                    onChange={(e) => handleRootChange("idDtks", e.target.value)}
+                    placeholder="Tulis '-' jika tidak ada"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Jumlah Saudara Kembar</label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={formData.personal.saudaraKembar || 0}
+                    onChange={(e) => handlePersonalChange("saudaraKembar", parseInt(e.target.value) || 0)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Status Anak (Yatim Piatu)</label>
+                  <input
+                    type="text"
+                    value={formData.personal.anakYatimPiatu || "Bukan Anak Yatim Piatu"}
+                    onChange={(e) => handlePersonalChange("anakYatimPiatu", e.target.value)}
+                    placeholder="Contoh: Bukan Anak Yatim Piatu"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 border-t border-gray-100 pt-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Anak Ke-</label>
@@ -668,6 +788,51 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                   />
                 </div>
               </div>
+
+              <h4 className="text-sm font-bold text-slate-800 border-b border-gray-100 pb-2 pt-4 flex items-center gap-2">
+                🎨 Keaktifan & Kegemaran Siswa (Seksi H)
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Bidang Kesenian (Hobi)</label>
+                  <input
+                    type="text"
+                    value={formData.kegemaran?.kesenian || ""}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      kegemaran: { ...prev.kegemaran, kesenian: e.target.value }
+                    }))}
+                    placeholder="Contoh: SENI RUPA"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Gaya Olahraga</label>
+                  <input
+                    type="text"
+                    value={formData.kegemaran?.olahraga || ""}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      kegemaran: { ...prev.kegemaran, olahraga: e.target.value }
+                    }))}
+                    placeholder="Contoh: BULUTANGKIS"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Kemasyarakatan / Organisasi</label>
+                  <input
+                    type="text"
+                    value={formData.kegemaran?.organisasi || ""}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      kegemaran: { ...prev.kegemaran, organisasi: e.target.value }
+                    }))}
+                    placeholder="Contoh: PECINTA ALAM"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -709,7 +874,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-gray-100 pt-4">
                 <div>
                   <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Pindahan Dari Sekolah (Jika ada)</label>
                   <input
@@ -729,6 +894,195 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                     placeholder="Mengikuti tugas kerja orang tua..."
                     className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
                   />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Lama Belajar di SMP (Tahun/Bulan)</label>
+                  <input
+                    type="text"
+                    value={formData.education.lamaBelajar || "3 Tahun"}
+                    onChange={(e) => handleEducationChange("lamaBelajar", e.target.value)}
+                    placeholder="Contoh: 3 Tahun"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Prestasi Akademik</label>
+                  <input
+                    type="text"
+                    value={formData.education.prestasiAkademik || "-"}
+                    onChange={(e) => handleEducationChange("prestasiAkademik", e.target.value)}
+                    placeholder="Contoh: Juara 1 Olimpiade Matematika Kabupaten"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Prestasi Non-Akademik</label>
+                  <input
+                    type="text"
+                    value={formData.education.prestasiNonAkademik || "-"}
+                    onChange={(e) => handleEducationChange("prestasiNonAkademik", e.target.value)}
+                    placeholder="Contoh: Juura 2 Basket Provinsi"
+                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100">
+                <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-widest mb-3 flex items-center justify-between">
+                  <span>📊 Nilai Rerata Rapor SMP/MTs (Seksi F)</span>
+                  <span className="text-[10px] text-gray-400 normal-case font-medium">Buku Rapor Semester I s.d. V</span>
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="Agama">Agama</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.agama ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            agama: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="PPKn">PPKn</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.ppkn ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            ppkn: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="B. Indonesia">B. Indo</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.bIndonesia ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            bIndonesia: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="Matematika">MTK</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.matematika ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            matematika: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="IPA">IPA</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.ipa ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            ipa: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="IPS">IPS</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.ips ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            ips: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title="Bahasa Inggris">B. Inggris</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={formData.education.nilaiRerataSMP?.bInggris ?? 90}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        education: {
+                          ...prev.education,
+                          nilaiRerataSMP: {
+                            ...prev.education.nilaiRerataSMP,
+                            bInggris: parseFloat(e.target.value) || 0
+                          }
+                        }
+                      }))}
+                      className="w-full px-2.5 py-1.5 rounded-lg border border-gray-200 text-xs text-center focus:outline-none focus:border-emerald-500 font-bold font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -825,6 +1179,39 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
                     />
                   </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">NIK Ayah Kandung</label>
+                    <input
+                      type="text"
+                      value={formData.parents.ayah.nik || ""}
+                      onChange={(e) => handleParentChange("ayah", "nik", e.target.value)}
+                      placeholder="16 digit NIK"
+                      className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tempat Lahir</label>
+                        <input
+                          type="text"
+                          value={formData.parents.ayah.tempatLahir || ""}
+                          onChange={(e) => handleParentChange("ayah", "tempatLahir", e.target.value)}
+                          placeholder="Kota Lahir"
+                          className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tgl Lahir</label>
+                        <input
+                          type="date"
+                          value={formData.parents.ayah.tanggalLahir || ""}
+                          onChange={(e) => handleParentChange("ayah", "tanggalLahir", e.target.value)}
+                          className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
                   {formData.parents.ayah.isMasihHidup && (
                     <>
                       <div>
@@ -854,7 +1241,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                           onChange={(e) => handleParentChange("ayah", "penghasilan", e.target.value)}
                           className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
                         >
-                          <option value="Tidak Berpenghasilan">Tidak Berpenghasilan</option>
+                          <option value="Tidak Berpenghasilan font-semibold">Tidak Berpenghasilan</option>
                           <option value="Kurang dari Rp 1.000.000">Kurang dari Rp 1.000.000</option>
                           <option value="Rp 1.000.000 - Rp 3.000.000">Rp 1.000.000 - Rp 3.000.000</option>
                           <option value="Rp 3.000.000 - Rp 5.000.000">Rp 3.000.000 - Rp 5.000.000</option>
@@ -911,6 +1298,39 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                       placeholder="Nama ibu lengkap"
                       className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
                     />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">NIK Ibu Kandung</label>
+                    <input
+                      type="text"
+                      value={formData.parents.ibu.nik || ""}
+                      onChange={(e) => handleParentChange("ibu", "nik", e.target.value)}
+                      placeholder="16 digit NIK"
+                      className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tempat Lahir</label>
+                        <input
+                          type="text"
+                          value={formData.parents.ibu.tempatLahir || ""}
+                          onChange={(e) => handleParentChange("ibu", "tempatLahir", e.target.value)}
+                          placeholder="Kota Lahir"
+                          className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tgl Lahir</label>
+                        <input
+                          type="date"
+                          value={formData.parents.ibu.tanggalLahir || ""}
+                          onChange={(e) => handleParentChange("ibu", "tanggalLahir", e.target.value)}
+                          className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                        />
+                      </div>
+                    </div>
                   </div>
                   {formData.parents.ibu.isMasihHidup && (
                     <>
@@ -1002,6 +1422,39 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                       />
                     </div>
                     <div>
+                      <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">NIK Wali</label>
+                      <input
+                        type="text"
+                        value={formData.guardian.nik || ""}
+                        onChange={(e) => handleGuardianChange("nik", e.target.value)}
+                        placeholder="16 digit NIK"
+                        className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                      />
+                    </div>
+                    <div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tempat Lahir</label>
+                          <input
+                            type="text"
+                            value={formData.guardian.tempatLahir || ""}
+                            onChange={(e) => handleGuardianChange("tempatLahir", e.target.value)}
+                            placeholder="Kota Lahir"
+                            className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-500 uppercase mb-1 truncate">Tgl Lahir</label>
+                          <input
+                            type="date"
+                            value={formData.guardian.tanggalLahir || ""}
+                            onChange={(e) => handleGuardianChange("tanggalLahir", e.target.value)}
+                            className="w-full px-2 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div>
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Hubungan dengan Siswa</label>
                       <input
                         type="text"
@@ -1032,7 +1485,7 @@ export const StudentForm: React.FC<StudentFormProps> = ({ student, onSave, onClo
                         className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-emerald-500 font-semibold font-mono"
                       />
                     </div>
-                    <div className="sm:col-span-2">
+                    <div className="sm:col-span-3">
                       <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">Alamat Domisili Wali</label>
                       <input
                         type="text"

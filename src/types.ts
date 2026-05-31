@@ -17,6 +17,8 @@ export interface StudentPersonalData {
   saudaraKandung: number;
   saudaraTiri: number;
   saudaraAngkat: number;
+  saudaraKembar?: number; // Added from Purwokerto form
+  anakYatimPiatu?: string; // Added: "Bukan Anak Yatim Piatu" etc.
   statusKeluarga: string; // Yatim / Piatu / Yatim Piatu / Lengkap
   bahasaSehariHari: string;
 }
@@ -25,7 +27,7 @@ export interface StudentAddressData {
   alamatLengkap: string;
   telepon: string;
   tinggalDengan: string; // Orang Tua / Wali / Asrama / Kos
-  jarakKeSekolah: string; // km
+  jarakKeSekolah: string; // km or meters
   transportasi: string;
 }
 
@@ -43,10 +45,25 @@ export interface StudentEducationData {
   nomorIjazah: string;
   pindahanDari?: string;
   alasanPindah?: string;
+  lamaBelajar?: string; // e.g. "3 Tahun"
+  nilaiRerataSMP?: {
+    agama?: number;
+    ppkn?: number;
+    bIndonesia?: number;
+    matematika?: number;
+    ipa?: number;
+    ips?: number;
+    bInggris?: number;
+  };
+  prestasiAkademik?: string;
+  prestasiNonAkademik?: string;
 }
 
 export interface ParentData {
   nama: string;
+  nik?: string; // Added from Purwokerto form
+  tempatLahir?: string; // Added
+  tanggalLahir?: string; // Added
   agama: string;
   kewarganegaraan: string;
   pendidikan: string;
@@ -65,6 +82,9 @@ export interface StudentParentsData {
 export interface StudentGuardianData {
   hasWali: boolean;
   nama: string;
+  nik?: string; // Added
+  tempatLahir?: string; // Added
+  tanggalLahir?: string; // Added
   agama: string;
   kewarganegaraan: string;
   pendidikan: string;
@@ -85,8 +105,19 @@ export interface StudentSchoolData {
   nomorStb?: string; // Nomor Buku Induk
 }
 
+export interface StudentKegemaranData {
+  kesenian?: string;
+  olahraga?: string;
+  organisasi?: string;
+}
+
 export interface Student {
   id: string; // Unique GUID or NISN
+  noPendaftaran?: string; // Added
+  nik?: string; // Added: NIK Siswa
+  noKk?: string; // Added: Nomor KK
+  noKip?: string; // Added: No KIP
+  idDtks?: string; // Added: ID DTKS
   personal: StudentPersonalData;
   address: StudentAddressData;
   health: StudentHealthData;
@@ -94,6 +125,7 @@ export interface Student {
   parents: StudentParentsData;
   guardian: StudentGuardianData;
   school: StudentSchoolData;
+  kegemaran?: StudentKegemaranData; // Added
   foto?: string; // Base64 string or placeholder path
   allowPrint?: boolean; // Controls whether this student is allowed to print their record book
 }
