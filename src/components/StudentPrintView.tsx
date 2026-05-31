@@ -104,10 +104,19 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
             <button
               id="btn-print-now"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-4.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-slate-700"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-slate-700"
             >
               <Printer className="w-4 h-4" />
               Cetak Dokumen
+            </button>
+            <button
+              id="btn-print-pdf-now"
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-emerald-500 shadow-emerald-600/10"
+              title="Simpan dokumen langsung ke berkas PDF"
+            >
+              <Download className="w-4 h-4" />
+              Simpan ke PDF
             </button>
             <button
               id="btn-close-print-engine"
@@ -161,7 +170,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
         <div className="print:hidden bg-indigo-50 border-b border-indigo-100 p-3 px-6 text-[10.5px] text-indigo-700 flex items-center gap-2.5">
           <span className="w-1.5 h-1.5 rounded-full bg-indigo-650 animate-pulse shrink-0"></span>
           <span>
-            <strong>Informasi Cetak:</strong> Dokumen didesain presisi mengikuti format dinas kesiswaan SMAN 1 Purwokerto. Gunakan ukuran kertas <strong>A4</strong> atau <strong>F4</strong> dengan opsi margin default/lebar kosong.
+            <strong>Informasi Cetak & Ekspor PDF:</strong> Dokumen didesain presisi mengikuti format kesiswaan SMAN 1 Purwokerto (A4/F4). Untuk ekspor ke file PDF, klik tombol <strong>"Simpan ke PDF"</strong> lalu atur kolom printer/tujuan (Destination) ke opsi <strong>"Simpan sebagai PDF" / "Save as PDF"</strong> di jendela cetak yang muncul.
           </span>
         </div>
 
@@ -190,7 +199,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
                       PEMERINTAH PROVINSI JAWA TENGAH
                     </h5>
                     <h5 className="text-[11px] font-bold tracking-tight text-zinc-800 uppercase mt-0.5">
-                      DINAS PENDIDIKAN DAN KEBUDAYAAN
+                      DINAS PENDIDIKAN
                     </h5>
                     <h4 className="text-sm font-black uppercase text-zinc-950 tracking-wider mt-0.5">
                       SEKOLAH MENENGAH ATAS NEGERI 1 PURWOKERTO
@@ -209,7 +218,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
                     LEMBAR BUKU INDUK MURID BARU
                   </h3>
                   <h4 className="font-sans font-extrabold text-xs text-zinc-850 mt-1">
-                    TAHUN PELAJARAN 2025/2026
+                    TAHUN PELAJARAN 2026/2027
                   </h4>
                 </div>
 
@@ -491,7 +500,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
                   SMA NEGERI 1 PURWOKERTO
                 </h4>
                 <h4 className="font-semibold text-[11px] uppercase tracking-widest text-zinc-600 text-center">
-                  TAHUN PELAJARAN 2025/2026
+                  TAHUN PELAJARAN 2026/2027
                 </h4>
               </div>
 
@@ -583,7 +592,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
               <div className="mt-12 flex flex-col items-end text-xs font-sans text-zinc-900">
                 <div className="text-right space-y-12">
                   <div className="space-y-1">
-                    <p className="text-slate-600">Purwokerto, 23 Juni 2025</p>
+                    <p className="text-slate-600">Purwokerto, 23 Juni 2026</p>
                     <p className="font-semibold text-slate-700">Yang membuat pernyataan,</p>
                   </div>
                   
@@ -706,7 +715,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
               {/* Dual signature layout at bottom */}
               <div className="mt-12 space-y-12">
                 <div className="text-right font-sans text-xs">
-                  <p className="text-slate-600">Purwokerto, 23 Juni 2025</p>
+                  <p className="text-slate-600">Purwokerto, 23 Juni 2026</p>
                   <p className="font-semibold text-slate-700">Orang tua/Wali Calon Murid Baru</p>
                 </div>
 

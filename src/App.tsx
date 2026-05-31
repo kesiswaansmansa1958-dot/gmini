@@ -66,6 +66,7 @@ export default function App() {
   const [studentNisn, setStudentNisn] = useState("");
   const [studentDob, setStudentDob] = useState("");
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginTab, setLoginTab] = useState<"siswa" | "admin">("siswa");
 
   // General App states
   const [activeAdminTab, setActiveAdminTab] = useState<"daftar_siswa" | "pengajuan_revisi">("daftar_siswa");
@@ -202,7 +203,7 @@ export default function App() {
       setLoggedInStudent(matched);
       setLoginError(null);
     } else {
-      setLoginError("NISN atau Tanggal Lahir tidak cocok! Coba isian demo di panel bawah.");
+      setLoginError("NISN atau Tanggal Lahir tidak cocok! Silakan periksa kembali data Anda.");
     }
   };
 
@@ -785,7 +786,7 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
               </div>
             </div>
 
-            {/* Right: Dual authentication Forms Tabs Grid */}
+            {/* Right: Unified Authentication Form Card */}
             <div className="flex flex-col gap-6">
               
               {/* Warning/Helper info if error exists */}
@@ -796,139 +797,128 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
                 </div>
               )}
 
-              {/* Grid block: Dual role cards side-by-side or stacked */}
-              <div className="grid grid-cols-1 gap-6">
-                
-                {/* 1. Login Admin */}
-                <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-4 border-b border-gray-100 pb-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                      <Lock className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-sans font-bold text-sm text-slate-800">Masuk Sebagai Administrator (TU)</h3>
-                      <p className="text-[11px] text-gray-400">Akses pendaftaran, penyuntingan & verifikasi arsip</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleAdminLogin} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <input
-                          type="text"
-                          required
-                          value={adminUsername}
-                          onChange={(e) => setAdminUsername(e.target.value)}
-                          placeholder="Username"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                      <div>
-                        <input
-                          type="password"
-                          required
-                          value={adminPassword}
-                          onChange={(e) => setAdminPassword(e.target.value)}
-                          placeholder="Sandi"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
-                        />
-                      </div>
-                    </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-600/10 flex items-center justify-center gap-1"
-                    >
-                      <span>Akses Admin</span>
-                    </button>
-                  </form>
+              {/* Single Unified Authentication Card */}
+              <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
+                {/* Tab Switcher Headers */}
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6">
+                  <button
+                    type="button"
+                    onClick={() => { setLoginTab("siswa"); setLoginError(null); }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
+                      loginTab === "siswa"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <User className="w-4 h-4" />
+                    <span>Masuk Siswa</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setLoginTab("admin"); setLoginError(null); }}
+                    className={`flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center gap-2 ${
+                      loginTab === "admin"
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Lock className="w-4 h-4" />
+                    <span>Masuk Admin</span>
+                  </button>
                 </div>
 
-                {/* 2. Login Siswa */}
-                <div className="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
-                  <div className="flex items-center gap-2.5 mb-4 border-b border-gray-100 pb-3">
-                    <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h3 className="font-sans font-bold text-sm text-slate-800">Masuk Sebagai Siswa</h3>
-                      <p className="text-[11px] text-gray-400">Verifikasi biodata, unduh/cetak lembar data mandiri</p>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handleStudentLogin} className="space-y-3">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <input
-                          type="text"
-                          required
-                          maxLength={10}
-                          value={studentNisn}
-                          onChange={(e) => setStudentNisn(e.target.value)}
-                          placeholder="Isi 10 digit NISN"
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 font-mono"
-                        />
+                {/* Tab Contents */}
+                {loginTab === "siswa" ? (
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-4 border-b border-gray-100 pb-3">
+                      <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                        <User className="w-4 h-4" />
                       </div>
                       <div>
-                        <input
-                          type="date"
-                          required
-                          value={studentDob}
-                          onChange={(e) => setStudentDob(e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 font-mono"
-                        />
+                        <h3 className="font-sans font-bold text-sm text-slate-800">Buku Induk Kesiswaan</h3>
+                        <p className="text-[11px] text-gray-400 font-medium">Verifikasi biodata, unduh/cetak lembar data mandiri</p>
                       </div>
                     </div>
-                    <button
-                      type="submit"
-                      className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-600/10 flex items-center justify-center gap-1"
-                    >
-                      <span>Akses Buku Induk Saya</span>
-                    </button>
-                  </form>
-                </div>
 
-              </div>
-
-              {/* DEMO LABELS FOR ASSISTANT EVALUATOR (EXTREMELY USEFUL AND ENCOURAGED) */}
-              <div className="bg-amber-50/70 border border-amber-200 rounded-3xl p-5 space-y-3">
-                <div className="flex items-center gap-2 text-amber-900 border-b border-amber-200 pb-2">
-                  <KeyRound className="w-4 h-4 shrink-0 text-amber-700" />
-                  <span className="text-xs font-bold font-sans">Panel Akun Uji Coba (Demo Access)</span>
-                </div>
-                
-                <div className="space-y-2">
-                  {/* Admin test trigger */}
-                  <div className="flex items-center justify-between text-xs text-amber-850 gap-2">
-                    <div>
-                      <span className="font-bold">Akun Admin Staf TU:</span>
-                      <p className="text-[10px] text-gray-500">Akses mutlak (Edit, input, hapus, print & approval)</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={triggerAdminDemo}
-                      className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold rounded-lg transition"
-                    >
-                      Masuk Admin
-                    </button>
-                  </div>
-                  
-                  {/* Students test triggers */}
-                  <div className="border-t border-amber-200/50 pt-2 space-y-1.5">
-                    <span className="text-[10px] font-bold text-amber-800 uppercase block tracking-wider">Akses Masuk Siswa (NISN + TTL):</span>
-                    {students.map(s => (
-                      <div key={s.id} className="flex items-center justify-between text-xs text-amber-850 gap-2">
-                        <span className="text-[10px] font-semibold">{s.personal.namaLengkap} ({s.school.kelasSkarang})</span>
-                        <button
-                          type="button"
-                          onClick={() => triggerDemoLogin(s.personal.nisn, s.personal.tanggalLahir)}
-                          className="px-2.5 py-1 bg-amber-100 hover:bg-amber-200 text-amber-800 text-[9px] font-bold rounded transition border border-amber-300"
-                        >
-                          Masuk Siswa
-                        </button>
+                    <form onSubmit={handleStudentLogin} className="space-y-4">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nomor Induk Siswa Nasional (NISN)</label>
+                          <input
+                            type="text"
+                            required
+                            maxLength={10}
+                            value={studentNisn}
+                            onChange={(e) => setStudentNisn(e.target.value)}
+                            placeholder="Masukkan 10 digit NISN"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Tanggal Lahir</label>
+                          <input
+                            type="date"
+                            required
+                            value={studentDob}
+                            onChange={(e) => setStudentDob(e.target.value)}
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500 font-mono"
+                          />
+                        </div>
                       </div>
-                    ))}
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-600/10 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Akses Buku Induk Saya</span>
+                      </button>
+                    </form>
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <div className="flex items-center gap-2.5 mb-4 border-b border-gray-100 pb-3">
+                      <div className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                        <Lock className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-sans font-bold text-sm text-slate-800">Akses Administrator (TU)</h3>
+                        <p className="text-[11px] text-gray-400 font-medium">Pendaftaran, penyuntingan, pencatatan & verifikasi arsip</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={handleAdminLogin} className="space-y-4">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Username Admin</label>
+                          <input
+                            type="text"
+                            required
+                            value={adminUsername}
+                            onChange={(e) => setAdminUsername(e.target.value)}
+                            placeholder="Isi username"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Kata Sandi</label>
+                          <input
+                            type="password"
+                            required
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            placeholder="Isi kata sandi"
+                            className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="submit"
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md shadow-blue-600/10 flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>Masuk Aplikasi</span>
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -1064,7 +1054,7 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
                     className="px-4.5 py-3 bg-slate-900 text-white font-sans font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition hover:bg-slate-800"
                   >
                     <Printer className="w-4 h-4 text-white" />
-                    Cetak Buku Induk Saya
+                    Cetak / Simpan ke PDF
                   </button>
                 ) : (
                   <div className="flex flex-col items-stretch sm:items-end">
