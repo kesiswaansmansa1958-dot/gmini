@@ -12,6 +12,7 @@ import { StudentPrintView } from "./components/StudentPrintView";
 import { RequestManager } from "./components/RequestManager";
 import { CorrectionRequestModal } from "./components/CorrectionRequestModal";
 import { ExcelImporterModal } from "./components/ExcelImporterModal";
+import { AdminSecuritySettings } from "./components/AdminSecuritySettings";
 import { 
   Building, 
   LogOut, 
@@ -59,6 +60,14 @@ export default function App() {
   // Auth states
   const [role, setRole] = useState<AppRole>("GUEST");
   const [loggedInStudent, setLoggedInStudent] = useState<Student | null>(null);
+
+  // Persisted admin credentials state
+  const [savedAdminUsername, setSavedAdminUsername] = useState<string>(() => {
+    return localStorage.getItem("buku_induk_admin_username") || "admin";
+  });
+  const [savedAdminPassword, setSavedAdminPassword] = useState<string>(() => {
+    return localStorage.getItem("buku_induk_admin_password") || "admin123";
+  });
   
   // Auth Form inputs
   const [adminUsername, setAdminUsername] = useState("");
@@ -69,7 +78,7 @@ export default function App() {
   const [loginTab, setLoginTab] = useState<"siswa" | "admin">("siswa");
 
   // General App states
-  const [activeAdminTab, setActiveAdminTab] = useState<"daftar_siswa" | "pengajuan_revisi">("daftar_siswa");
+  const [activeAdminTab, setActiveAdminTab] = useState<"daftar_siswa" | "pengajuan_revisi" | "ubah_password">("daftar_siswa");
   const [selectedStudentForPrint, setSelectedStudentForPrint] = useState<Student | null>(null);
   const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [isAddingStudent, setIsAddingStudent] = useState(false);
@@ -182,11 +191,11 @@ export default function App() {
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError(null);
-    if (adminUsername === "admin" && adminPassword === "admin123") {
+    if (adminUsername === savedAdminUsername && adminPassword === savedAdminPassword) {
       setRole("ADMIN");
       setLoginError(null);
     } else {
-      setLoginError("Username atau password salah! (Hint: admin / admin123)");
+      setLoginError(`Username atau Password Admin salah!`);
     }
   };
 
@@ -205,6 +214,19 @@ export default function App() {
     } else {
       setLoginError("NISN atau Tanggal Lahir tidak cocok! Silakan periksa kembali data Anda.");
     }
+  };
+
+  const handleUpdateAdminCredentials = (currentPasswordInput: string, newUsername: string, newValuePassword?: string): boolean => {
+    if (currentPasswordInput !== savedAdminPassword) {
+      return false;
+    }
+    setSavedAdminUsername(newUsername);
+    localStorage.setItem("buku_induk_admin_username", newUsername);
+    if (newValuePassword) {
+      setSavedAdminPassword(newValuePassword);
+      localStorage.setItem("buku_induk_admin_password", newValuePassword);
+    }
+    return true;
   };
 
   const [toast, setToast] = useState<{ message: string; type: "success" | "info" | "warning" } | null>(null);
@@ -975,6 +997,18 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
                       </span>
                     )}
                   </button>
+                  <button
+                    type="button"
+                    id="tab-btn-security"
+                    onClick={() => setActiveAdminTab("ubah_password")}
+                    className={`px-4 py-2 rounded-lg text-xs font-bold font-sans transition flex items-center gap-1.5 ${
+                      activeAdminTab === "ubah_password"
+                        ? "bg-white text-slate-800 shadow-sm"
+                        : "text-gray-500 hover:text-gray-900"
+                    }`}
+                  >
+                    <span>Ubah Password</span>
+                  </button>
                 </div>
 
                 <button
@@ -1005,7 +1039,7 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
             </div>
 
             {/* TAB CONTENTS */}
-            {activeAdminTab === "daftar_siswa" ? (
+            {activeAdminTab === "daftar_siswa" && (
               <StudentList
                 students={students}
                 onSelectStudent={(s) => setSelectedStudentForPrint(s)}
@@ -1014,11 +1048,21 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
                 onAddStudent={() => setIsAddingStudent(true)}
                 onTogglePrintPermission={handleTogglePrintPermission}
               />
-            ) : (
+            )}
+
+            {activeAdminTab === "pengajuan_revisi" && (
               <RequestManager
                 requests={requests}
                 onApprove={handleApproveRequest}
                 onReject={handleRejectRequest}
+              />
+            )}
+
+            {activeAdminTab === "ubah_password" && (
+              <AdminSecuritySettings
+                currentUsername={savedAdminUsername}
+                onUpdateCredentials={handleUpdateAdminCredentials}
+                showToast={showToast}
               />
             )}
 
@@ -1054,7 +1098,7 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
                     className="px-4.5 py-3 bg-slate-900 text-white font-sans font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-sm transition hover:bg-slate-800"
                   >
                     <Printer className="w-4 h-4 text-white" />
-                    Cetak / Simpan ke PDF
+                    Cetak Buku Induk Saya
                   </button>
                 ) : (
                   <div className="flex flex-col items-stretch sm:items-end">

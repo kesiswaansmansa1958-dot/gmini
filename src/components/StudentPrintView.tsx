@@ -104,19 +104,10 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
             <button
               id="btn-print-now"
               onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-slate-700"
+              className="flex items-center gap-1.5 px-4.5 py-2 bg-slate-900 hover:bg-slate-800 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-slate-700"
             >
               <Printer className="w-4 h-4" />
               Cetak Dokumen
-            </button>
-            <button
-              id="btn-print-pdf-now"
-              onClick={handlePrint}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-sans font-bold text-xs rounded-xl transition shadow-md cursor-pointer border border-emerald-500 shadow-emerald-600/10"
-              title="Simpan dokumen langsung ke berkas PDF"
-            >
-              <Download className="w-4 h-4" />
-              Simpan ke PDF
             </button>
             <button
               id="btn-close-print-engine"
@@ -170,7 +161,7 @@ export const StudentPrintView: React.FC<StudentPrintViewProps> = ({ student, onC
         <div className="print:hidden bg-indigo-50 border-b border-indigo-100 p-3 px-6 text-[10.5px] text-indigo-700 flex items-center gap-2.5">
           <span className="w-1.5 h-1.5 rounded-full bg-indigo-650 animate-pulse shrink-0"></span>
           <span>
-            <strong>Informasi Cetak & Ekspor PDF:</strong> Dokumen didesain presisi mengikuti format kesiswaan SMAN 1 Purwokerto (A4/F4). Untuk ekspor ke file PDF, klik tombol <strong>"Simpan ke PDF"</strong> lalu atur kolom printer/tujuan (Destination) ke opsi <strong>"Simpan sebagai PDF" / "Save as PDF"</strong> di jendela cetak yang muncul.
+            <strong>Informasi Cetak:</strong> Dokumen didesain presisi mengikuti format dinas kesiswaan SMAN 1 Purwokerto. Gunakan ukuran kertas <strong>A4</strong> atau <strong>F4</strong> dengan opsi margin default/lebar kosong.
           </span>
         </div>
 
