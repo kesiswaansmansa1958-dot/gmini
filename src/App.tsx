@@ -811,6 +811,20 @@ create policy "Akses Publik Universal Revisi" on public.buku_induk_requests for 
             {/* Right: Unified Authentication Form Card */}
             <div className="flex flex-col gap-6">
               
+              {/* PHP + MySQL XAMPP Version Alert Banner */}
+              <div className="p-4.5 bg-blue-50 border border-blue-200 text-blue-900 rounded-3xl flex items-start gap-3 text-xs leading-relaxed shadow-sm">
+                <Database className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <span className="font-sans font-black uppercase text-blue-950 block">Pemrograman PHP MySQL Terpasang!</span>
+                  <span className="text-gray-500 font-medium block">
+                    Sesuai permintaan Anda, versi <strong>PHP Native & MySQL</strong> lengkap untuk <strong>XAMPP</strong> telah berhasil dibuat di direktori proyek <code>/php-buku-induk/</code>. 
+                  </span>
+                  <p className="text-[10.5px] text-blue-800 font-semibold pt-1">
+                    Baca berkas <code>README.md</code> di folder tersebut untuk panduan impor database <code>database.sql</code> dan instalasi di htdocs.
+                  </p>
+                </div>
+              </div>
+
               {/* Warning/Helper info if error exists */}
               {loginError && (
                 <div className="p-4 bg-rose-50 border border-rose-200 text-rose-850 rounded-2xl flex items-start gap-2.5 text-xs font-semibold shadow-sm animate-shake">
