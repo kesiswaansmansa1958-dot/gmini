@@ -22,34 +22,47 @@ if (!$student) {
 $is_revision_modal_open = false;
 $revision_error = null;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_submit_revision'])) {
-    $field_name = $_POST['field_name'] ?? '';
-    $field_label = $_POST['field_label'] ?? '';
-    $new_value = trim($_POST['new_value'] ?? '');
-    
-    // Tarik nilai lama dari database untuk dicocokkan
-    $old_value = isset($student[$field_name]) ? $student[$field_name] : '';
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['action_submit_revision'])) {
+        $field_name = $_POST['field_name'] ?? '';
+        $field_label = $_POST['field_label'] ?? '';
+        $new_value = trim($_POST['new_value'] ?? '');
+        
+        // Tarik nilai lama dari database untuk dicocokkan
+        $old_value = isset($student[$field_name]) ? $student[$field_name] : '';
 
-    if (empty($field_name) || empty($field_label) || empty($new_value)) {
-        $revision_error = "Harap tentukan kolom isian dan nilai usulan baru!";
-    } else {
-        // Simpan usulan ke tabel correction_requests
-        $ins_stmt = $db->prepare("
-            INSERT INTO correction_requests (student_id, student_nisn, student_nama, field_name, field_label, old_value, new_value, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'Diproses')
-        ");
-        $ins_stmt->execute([
-            $student_id,
-            $student['nisn'],
-            $student['nama_lengkap'],
-            $field_name,
-            $field_label,
-            $old_value,
-            $new_value
-        ]);
+        if (empty($field_name) || empty($field_label) || empty($new_value)) {
+            $revision_error = "Harap tentukan kolom isian dan nilai usulan baru!";
+        } else {
+            // Simpan usulan ke tabel correction_requests
+            $ins_stmt = $db->prepare("
+                INSERT INTO correction_requests (student_id, student_nisn, student_nama, field_name, field_label, old_value, new_value, status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'Diproses')
+            ");
+            $ins_stmt->execute([
+                $student_id,
+                $student['nisn'],
+                $student['nama_lengkap'],
+                $field_name,
+                $field_label,
+                $old_value,
+                $new_value
+            ]);
 
-        set_flash_message("Usulan revisi biodata '{$field_label}' berhasil dikirimkan ke Staf Tata Usaha Sekolah!", "success");
-        redirect('student_dashboard.php');
+            set_flash_message("Usulan revisi biodata '{$field_label}' berhasil dikirimkan ke Staf Tata Usaha Sekolah!", "success");
+            redirect('student_dashboard.php');
+        }
+    } elseif (isset($_POST['action_update_photo'])) {
+        $photo_base64 = trim($_POST['photo_base64'] ?? '');
+        if (!empty($photo_base64)) {
+            $up_stmt = $db->prepare("UPDATE students SET foto = ? WHERE id = ?");
+            $up_stmt->execute([$photo_base64, $student_id]);
+            set_flash_message("Identitas Pas Foto profil Anda berhasil disinkronisasi ke basis data Buku Induk!", "success");
+            redirect('student_dashboard.php');
+        } else {
+            set_flash_message("Gagal memperbarui: Berkas pas foto kosong atau tidak valid!", "danger");
+            redirect('student_dashboard.php');
+        }
     }
 }
 
@@ -105,18 +118,25 @@ $revisions = $hist_stmt->fetchAll();
             
             <!-- Profil Card -->
             <div class="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm flex flex-col items-center text-center space-y-4">
-                <?php if ($student['foto']): ?>
-                    <img src="<?= $student['foto'] ?>" class="w-32 h-32 rounded-full border-4 border-slate-100 object-cover shadow-sm">
-                <?php else: ?>
-                    <div class="w-32 h-32 rounded-full bg-slate-100 text-slate-400 font-extrabold flex items-center justify-center border-4 border-slate-100 uppercase text-3xl shadow-sm">
-                        <?= substr($student['nama_lengkap'], 0, 2) ?>
-                    </div>
-                <?php endif; ?>
+                <div class="relative group">
+                    <?php if ($student['foto']): ?>
+                        <img id="avatar_display" src="<?= $student['foto'] ?>" class="w-32 h-32 rounded-full border-4 border-white ring-4 ring-slate-100 object-cover shadow-sm bg-slate-50">
+                    <?php else: ?>
+                        <div id="avatar_display_placeholder" class="w-32 h-32 rounded-full bg-slate-100 text-slate-400 font-extrabold flex items-center justify-center border-4 border-white ring-4 ring-slate-100 uppercase text-3xl shadow-sm">
+                            <?= substr($student['nama_lengkap'], 0, 2) ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
 
-                <div>
-                    <span class="inline-block px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-none mb-2">MASUK SISWA</span>
+                <div class="w-full">
+                    <span class="inline-block px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-[9px] font-bold text-blue-700 uppercase tracking-widest leading-none mb-2.5">MASUK SISWA</span>
                     <h3 class="text-md font-black text-slate-850 tracking-tight leading-tight"><?= esc($student['nama_lengkap']) ?></h3>
                     <p class="text-xs text-gray-400 font-semibold font-sans mt-1">NISN: <?= esc($student['nisn']) ?> &middot; Kelas: <?= esc($student['kelas_sekarang']) ?></p>
+                    
+                    <button type="button" onclick="openPhotoModal()" class="w-full mt-4 py-2 px-3.5 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl text-[11px] font-bold transition flex items-center justify-center gap-1.5 border border-gray-200 hover:border-blue-200 cursor-pointer shadow-xs">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <span>Ubah / Cetak Pas Foto</span>
+                    </button>
                 </div>
             </div>
 
@@ -360,6 +380,109 @@ $revisions = $hist_stmt->fetchAll();
         <p>&copy; <?= date('Y') ?> SMA Negeri 1 Purwokerto. Hak Cipta Dilindungi.</p>
     </footer>
 
+    <!-- MODAL POPUP UNTUK EDIT & UNGGAH PAS FOTO -->
+    <div id="photoEditorModal" class="fixed inset-0 z-50 hidden bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl border border-gray-150 max-w-md w-full overflow-hidden shadow-2xl animate-fadeIn">
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-950 text-white">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 bg-blue-600 rounded-lg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-[11px] uppercase tracking-wider text-slate-100">Sesuaikan Pas Foto 3x4</h3>
+                        <p class="text-[9px] text-gray-400 font-sans font-medium">Layanan mandiri pengunggahan kearsipan</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closePhotoModal()" class="text-gray-400 hover:text-white transition text-2xl font-bold leading-none cursor-pointer">&times;</button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-5 space-y-4">
+                
+                <!-- File Drop Placeholder Area -->
+                <div id="uploadPlaceholder" class="border-2 border-dashed border-gray-250 hover:border-blue-500 rounded-2xl p-6 text-center cursor-pointer bg-slate-50 hover:bg-blue-50/10 transition flex flex-col items-center justify-center gap-2.5" onclick="document.getElementById('modalFilePicker').click()">
+                    <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+                        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-800">Klik atau Seret Berkas Foto Baru</p>
+                        <p class="text-[10px] text-gray-400 mt-1 font-medium leading-normal">Mendukung resolusi JPG, PNG, WEBP luring</p>
+                    </div>
+                    <input type="file" id="modalFilePicker" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
+                </div>
+
+                <!-- Cropper Workshop Controls -->
+                <div id="editorWorkspace" class="hidden space-y-4">
+                    <div class="flex flex-col items-center justify-center gap-3">
+                        <!-- Canvas Viewport with 3:4 Overlay frame -->
+                        <div class="relative overflow-hidden rounded-2xl border border-gray-250 bg-slate-100 shadow-md shrink-0" style="width: 210px; height: 280px;">
+                            <canvas id="photoCropperCanvas" width="300" height="400" class="w-full h-full cursor-grab"></canvas>
+                            
+                            <!-- Absolute guide box overlay -->
+                            <div class="absolute inset-0 pointer-events-none border-[3px] border-blue-500/20 rounded-2xl flex flex-col justify-between">
+                                <div class="flex-grow border-b border-white/20 flex">
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow"></div>
+                                </div>
+                                <div class="flex-grow border-b border-white/20 flex">
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow"></div>
+                                </div>
+                                <div class="flex-grow flex">
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow border-r border-white/20"></div>
+                                    <div class="flex-grow"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="text-[9px] text-gray-400 font-bold font-sans italic text-center">Geser gambar untuk pemosisian kepala. Atur perbesaran di bawah.</p>
+                    </div>
+
+                    <!-- Fine-tuning Slider Controls -->
+                    <div class="space-y-2.5 bg-slate-50 p-3.5 rounded-2xl border border-gray-200">
+                        <div>
+                            <div class="flex justify-between text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
+                                <span>Perbesar / Skala</span>
+                                <span id="zoomValPercent" class="font-mono">100%</span>
+                            </div>
+                            <input id="zoom_slider" type="range" min="1.0" max="4.0" step="0.02" value="1.0" class="w-full cursor-pointer accent-blue-600" oninput="adjustZoom(this.value)">
+                        </div>
+
+                        <div class="flex items-center justify-between pt-2 border-t border-gray-150">
+                            <span class="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wider">Rotasi 90 Derajat</span>
+                            <div class="flex items-center gap-1">
+                                <button type="button" onclick="rotateLeft()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-gray-250 rounded-lg text-xs font-bold text-slate-700 transition flex items-center gap-0.5">
+                                    &larr; Kiri
+                                </button>
+                                <button type="button" onclick="rotateRight()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-gray-250 rounded-lg text-xs font-bold text-slate-700 transition flex items-center gap-0.5">
+                                    Kanan &rarr;
+                                </button>
+                                <button type="button" onclick="resetTransforms()" class="px-2.5 py-1 bg-white hover:bg-rose-50 border border-gray-250 hover:border-rose-100 rounded-lg text-xs font-bold text-rose-600 transition">
+                                    Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Form Submit action -->
+                <form id="savePhotoForm" method="POST" class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2 text-xs">
+                    <input type="hidden" name="action_update_photo" value="1">
+                    <input type="hidden" name="photo_base64" id="photo_base64_input">
+                    <button type="button" onclick="closePhotoModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition">
+                        Batal
+                    </button>
+                    <button type="button" id="saveBtnSubmit" onclick="submitPhotoForm()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-md shadow-blue-500/10 cursor-pointer disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed" disabled>
+                        Terapkan & Simpan Foto
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
         function updateSelectedField(selectEl) {
             const val = selectEl.value;
@@ -373,6 +496,184 @@ $revisions = $hist_stmt->fetchAll();
             } else {
                 targetFieldName.value = '';
                 targetFieldLabel.value = '';
+            }
+        }
+
+        // ================= PAS FOTO CROPPER CONTROLS & MODEL ENGINE =================
+        let tempImg = new Image();
+        let zoomValue = 1.0;
+        let rotationValue = 0;
+        let panX = 0;
+        let panY = 0;
+        
+        let isDragState = false;
+        let mouseStartX = 0;
+        let mouseStartY = 0;
+
+        function openPhotoModal() {
+            document.getElementById('photoEditorModal').classList.remove('hidden');
+            document.getElementById('photoEditorModal').classList.add('flex');
+            
+            // Clean state
+            tempImg = new Image();
+            zoomValue = 1.0;
+            rotationValue = 0;
+            panX = 0;
+            panY = 0;
+            
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('editorWorkspace').classList.add('hidden');
+            document.getElementById('saveBtnSubmit').setAttribute('disabled', 'true');
+            document.getElementById('photo_base64_input').value = '';
+            document.getElementById('modalFilePicker').value = '';
+        }
+
+        function closePhotoModal() {
+            document.getElementById('photoEditorModal').classList.add('hidden');
+            document.getElementById('photoEditorModal').classList.remove('flex');
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    tempImg.onload = function() {
+                        zoomValue = 1.0;
+                        rotationValue = 0;
+                        panX = 0;
+                        panY = 0;
+                        
+                        document.getElementById('editorWorkspace').classList.remove('hidden');
+                        document.getElementById('uploadPlaceholder').classList.add('hidden');
+                        document.getElementById('saveBtnSubmit').removeAttribute('disabled');
+                        document.getElementById('zoom_slider').value = 1.0;
+                        document.getElementById('zoomValPercent').innerText = '100%';
+                        
+                        renderCanvas();
+                        setupCanvasDrag();
+                    };
+                    tempImg.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function adjustZoom(val) {
+            zoomValue = parseFloat(val);
+            document.getElementById('zoomValPercent').innerText = Math.round(zoomValue * 100) + '%';
+            renderCanvas();
+        }
+
+        function rotateLeft() {
+            rotationValue = (rotationValue - 90) % 360;
+            renderCanvas();
+        }
+
+        function rotateRight() {
+            rotationValue = (rotationValue + 90) % 360;
+            renderCanvas();
+        }
+
+        function resetTransforms() {
+            zoomValue = 1.0;
+            rotationValue = 0;
+            panX = 0;
+            panY = 0;
+            document.getElementById('zoom_slider').value = 1.0;
+            document.getElementById('zoomValPercent').innerText = '100%';
+            renderCanvas();
+        }
+
+        function renderCanvas() {
+            const canvas = document.getElementById('photoCropperCanvas');
+            if (!canvas || !tempImg.src) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;  // 300
+            const h = canvas.height; // 400
+            
+            ctx.clearRect(0, 0, w, h);
+            ctx.save();
+            
+            // Translate to center of canvas
+            ctx.translate(w / 2 + panX, h / 2 + panY);
+            ctx.rotate((rotationValue * Math.PI) / 180);
+            
+            // Find base scale to cover the 3:4 canvas aspect ratio
+            let imgRatio = tempImg.width / tempImg.height;
+            let canvasRatio = w / h;
+            let baseScale = 1;
+            
+            if (imgRatio > canvasRatio) {
+                // Landscape, fit height
+                baseScale = h / tempImg.height;
+            } else {
+                // Portrait or square, fit width
+                baseScale = w / tempImg.width;
+            }
+            
+            let drawWidth = tempImg.width * baseScale * zoomValue;
+            let drawHeight = tempImg.height * baseScale * zoomValue;
+            
+            // Draw image centred
+            ctx.drawImage(tempImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+            ctx.restore();
+            
+            // Pack output base64 directly
+            document.getElementById('photo_base64_input').value = canvas.toDataURL('image/jpeg', 0.9);
+        }
+
+        function setupCanvasDrag() {
+            const canvas = document.getElementById('photoCropperCanvas');
+            if (!canvas) return;
+            
+            // Remove previous event listeners by cloning if necessary (vanilla approach is fine since pointer events reset)
+            const startDrag = (clientX, clientY) => {
+                isDragState = true;
+                mouseStartX = clientX - panX;
+                mouseStartY = clientY - panY;
+                canvas.style.cursor = 'grabbing';
+            };
+            
+            const moveDrag = (clientX, clientY) => {
+                if (!isDragState) return;
+                panX = clientX - mouseStartX;
+                panY = clientY - mouseStartY;
+                renderCanvas();
+            };
+            
+            const endDrag = () => {
+                isDragState = false;
+                canvas.style.cursor = 'grab';
+            };
+            
+            // Primary mouse handlers
+            canvas.onmousedown = (e) => startDrag(e.clientX, e.clientY);
+            canvas.onmousemove = (e) => moveDrag(e.clientX, e.clientY);
+            canvas.onmouseup = endDrag;
+            canvas.onmouseleave = endDrag;
+            
+            // Touch mobile device support mechanics
+            canvas.ontouchstart = (e) => {
+                if (e.touches.length === 1) {
+                    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            };
+            canvas.ontouchmove = (e) => {
+                if (isDragState && e.touches.length === 1) {
+                    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+                    e.preventDefault();
+                }
+            };
+            canvas.ontouchend = endDrag;
+        }
+
+        function submitPhotoForm() {
+            const b64 = document.getElementById('photo_base64_input').value;
+            if (b64 && b64.startsWith('data:image/')) {
+                document.getElementById('savePhotoForm').submit();
+            } else {
+                alert('Tolong unggah dan tempatkan pas foto terlebih dahulu.');
             }
         }
     </script>

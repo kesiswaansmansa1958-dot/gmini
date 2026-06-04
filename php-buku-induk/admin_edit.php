@@ -624,18 +624,108 @@ function checked($field, $default = false) {
                     </div>
                 </div>
 
-                <!-- Foto Upload Base64 Area -->
-                <div class="pt-4 border-t space-y-2">
-                    <label class="block text-[10px] font-extrabold text-gray-500 uppercase tracking-wider">Pas Foto Siswa (Representasi Base64)</label>
-                    <textarea name="foto_base64" id="foto_base64" rows="4" placeholder="Unggah pas foto formal atau paste kode Base64 string gambar di sini..." class="w-full px-3 py-2 border border-gray-200 rounded-xl text-[10px] font-mono text-slate-600 focus:outline-none focus:border-blue-500"><?= val('foto') ?></textarea>
+                <!-- Foto Upload with Interactive Cropper Area -->
+                <div class="pt-4 border-t space-y-4">
+                    <label class="block text-[10px] font-extrabold text-slate-500 uppercase tracking-widest leading-none">Pas Foto Siswa Resmi (Proporsi 3:4)</label>
                     
-                    <div class="flex items-center gap-3">
-                        <input type="file" id="file_picker" accept="image/*" onchange="convertImage()" class="hidden">
-                        <button type="button" onclick="document.getElementById('file_picker').click()" class="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition border border-gray-300">
-                            Pilih Foto Gambar Lokal
-                        </button>
-                        <span class="text-[9.5px] text-gray-400">File foto akan otomatis dikonversikan menjadi Base64 lokal secara aman.</span>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                        <!-- Left pane: Current Preview & Selector -->
+                        <div class="md:col-span-4 flex flex-col items-center justify-center p-5 bg-slate-50 rounded-2xl border border-gray-200 text-center space-y-4">
+                            <div class="relative overflow-hidden rounded-2xl border-4 border-white shadow-md bg-slate-100" style="width: 120px; height: 160px;">
+                                <img id="final_image_preview" src="<?= val('foto') ?: 'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22160%22 viewBox=%220 0 120 160%22><rect width=%22120%22 height=%22160%22 fill=%22%23f1f5f9%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-size=%2210%22 fill=%22%2394a3b8%22>Pas Foto 3x4</text></svg>' ?>" class="w-full h-full object-cover">
+                            </div>
+                            <div class="w-full">
+                                <span id="photo_status_badge" class="<?= val('foto') ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-100 text-slate-550 border-slate-200' ?> inline-block px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-wider mb-3 leading-none">
+                                    <?= val('foto') ? 'Pas Foto Terunggah' : 'Belum Ada Foto' ?>
+                                </span>
+                                <input type="file" id="admin_file_picker" accept="image/*" class="hidden" onchange="handleAdminFileSelect(event)">
+                                <button type="button" onclick="document.getElementById('admin_file_picker').click()" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path></svg>
+                                    <span>Pilih File Gambar</span>
+                                </button>
+                                <?php if (val('foto')): ?>
+                                    <button type="button" id="btn_clear_photo" onclick="clearPhoto()" class="w-full mt-2 py-1.5 bg-white hover:bg-rose-50 text-rose-600 hover:text-rose-700 border border-gray-250 hover:border-rose-100 rounded-lg text-[10px] font-bold transition">
+                                        Hapus Pas Foto
+                                    </button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+
+                        <!-- Right pane: Interactive Workstation (initially hidden) -->
+                        <div id="admin_crop_workshop" class="hidden md:col-span-8 p-5 bg-slate-50 rounded-2xl border border-gray-200 flex flex-col md:flex-row items-center gap-6 animate-fadeIn">
+                            <!-- Canvas boundaries -->
+                            <div class="relative overflow-hidden rounded-2xl border border-gray-250 shadow-md bg-white shrink-0" style="width: 150px; height: 200px;">
+                                <canvas id="admin_cropper_canvas" width="300" height="400" class="w-full h-full cursor-grab"></canvas>
+                                <!-- Guidelines frame overlay -->
+                                <div class="absolute inset-0 pointer-events-none border-[2px] border-blue-500/25 rounded-2xl flex flex-col justify-between">
+                                    <div class="flex-grow border-b border-white/20 flex">
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow"></div>
+                                    </div>
+                                    <div class="flex-grow border-b border-white/20 flex">
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow"></div>
+                                    </div>
+                                    <div class="flex-grow flex">
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow border-r border-white/20"></div>
+                                        <div class="flex-grow"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Workstation Zooming Rotations and Pan handles -->
+                            <div class="flex-1 space-y-4 w-full">
+                                <div>
+                                    <div class="flex justify-between text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                                        <span>Perbesar / Skala</span>
+                                        <span id="admin_zoom_display" class="font-mono">100%</span>
+                                    </div>
+                                    <input id="admin_zoom_slider" type="range" min="1.0" max="4.0" step="0.02" value="1.0" class="w-full cursor-pointer accent-blue-600" oninput="adjustAdminZoom(this.value)">
+                                </div>
+
+                                <div class="flex items-center justify-between pt-1">
+                                    <span class="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wider">Transformasi</span>
+                                    <div class="flex items-center gap-1">
+                                        <button type="button" onclick="rotateAdminLeft()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-gray-200 rounded-lg text-xs font-bold text-slate-700 transition">
+                                            &larr; Kiri
+                                        </button>
+                                        <button type="button" onclick="rotateAdminRight()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-gray-200 rounded-lg text-xs font-bold text-slate-700 transition">
+                                            Kanan &rarr;
+                                        </button>
+                                        <button type="button" onclick="resetAdminTransforms()" class="px-2.5 py-1 bg-white hover:bg-slate-100 border border-gray-200 rounded-lg text-xs font-bold text-slate-700 transition">
+                                            Reset
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div class="pt-3.5 border-t border-gray-250 flex justify-end gap-2">
+                                    <button type="button" onclick="cancelAdminCrop()" class="px-3 py-1.5 bg-white hover:bg-slate-100 border border-gray-200 rounded-xl text-xs font-bold text-slate-600 transition">
+                                        Batal
+                                    </button>
+                                    <button type="button" onclick="saveAdminCrop()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
+                                        Terapkan Potongan Foto
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Drop helper placeholder block when workspace is inactive -->
+                        <div id="admin_drop_placeholder" class="md:col-span-8 border-2 border-dashed border-gray-250 rounded-2xl flex flex-col items-center justify-center p-6 bg-white cursor-pointer text-center space-y-2" onclick="document.getElementById('admin_file_picker').click()">
+                            <div class="p-2 bg-slate-50 rounded-full text-slate-400">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700">Pas Foto Buku Induk Baru</p>
+                                <p class="text-[10px] text-gray-400 mt-0.5 leading-normal">Pilih atau seret gambar. Pas foto 3x4 akan dipangkas secara otomatis.</p>
+                            </div>
+                        </div>
                     </div>
+                    
+                    <!-- Hidden real input containing the active Base64 string data -->
+                    <input type="hidden" name="foto_base64" id="foto_base64" value="<?= val('foto') ?>">
                 </div>
             </div>
 
@@ -684,17 +774,187 @@ function checked($field, $default = false) {
             }
         }
 
-        // Convert selected image file to Base64 output
-        function convertImage() {
-            const picker = document.getElementById('file_picker');
-            const output = document.getElementById('foto_base64');
-            if (picker.files && picker.files[0]) {
-                const file = picker.files[0];
+        // ================= ADMIN PHOTO CROPPER MECHANICS ENGINE =================
+        let adminImg = new Image();
+        let adminZoom = 1.0;
+        let adminRotation = 0;
+        let adminPanX = 0;
+        let adminPanY = 0;
+        
+        let isAdminDragging = false;
+        let adminStartX = 0;
+        let adminStartY = 0;
+
+        function handleAdminFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
                 const reader = new FileReader();
-                reader.onload = function(e) {
-                    output.value = e.target.result;
-                }
+                reader.onload = function(event) {
+                    adminImg.onload = function() {
+                        adminZoom = 1.0;
+                        adminRotation = 0;
+                        adminPanX = 0;
+                        adminPanY = 0;
+                        
+                        document.getElementById('admin_crop_workshop').classList.remove('hidden');
+                        document.getElementById('admin_crop_workshop').classList.add('flex');
+                        document.getElementById('admin_drop_placeholder').classList.add('hidden');
+                        
+                        document.getElementById('admin_zoom_slider').value = 1.0;
+                        document.getElementById('admin_zoom_display').innerText = '100%';
+                        
+                        renderAdminCanvas();
+                        setupAdminDrag();
+                    };
+                    adminImg.src = event.target.result;
+                };
                 reader.readAsDataURL(file);
+            }
+        }
+
+        function adjustAdminZoom(val) {
+            adminZoom = parseFloat(val);
+            document.getElementById('admin_zoom_display').innerText = Math.round(adminZoom * 100) + '%';
+            renderAdminCanvas();
+        }
+
+        function rotateAdminLeft() {
+            adminRotation = (adminRotation - 90) % 360;
+            renderAdminCanvas();
+        }
+
+        function rotateAdminRight() {
+            adminRotation = (adminRotation + 90) % 360;
+            renderAdminCanvas();
+        }
+
+        function resetAdminTransforms() {
+            adminZoom = 1.0;
+            adminRotation = 0;
+            adminPanX = 0;
+            adminPanY = 0;
+            document.getElementById('admin_zoom_slider').value = 1.0;
+            document.getElementById('admin_zoom_display').innerText = '100%';
+            renderAdminCanvas();
+        }
+
+        function cancelAdminCrop() {
+            document.getElementById('admin_crop_workshop').classList.add('hidden');
+            document.getElementById('admin_crop_workshop').classList.remove('flex');
+            document.getElementById('admin_drop_placeholder').classList.remove('hidden');
+            document.getElementById('admin_file_picker').value = '';
+        }
+
+        function renderAdminCanvas() {
+            const canvas = document.getElementById('admin_cropper_canvas');
+            if (!canvas || !adminImg.src) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;  // 300
+            const h = canvas.height; // 400
+            
+            ctx.clearRect(0,  0, w, h);
+            ctx.save();
+            
+            // Translate center
+            ctx.translate(w / 2 + adminPanX, h / 2 + adminPanY);
+            ctx.rotate((adminRotation * Math.PI) / 180);
+            
+            let imgRatio = adminImg.width / adminImg.height;
+            let canvasRatio = w / h;
+            let baseScale = 1;
+            
+            if (imgRatio > canvasRatio) {
+                baseScale = h / adminImg.height;
+            } else {
+                baseScale = w / adminImg.width;
+            }
+            
+            let drawWidth = adminImg.width * baseScale * adminZoom;
+            let drawHeight = adminImg.height * baseScale * adminZoom;
+            
+            ctx.drawImage(adminImg, -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+            ctx.restore();
+        }
+
+        function setupAdminDrag() {
+            const canvas = document.getElementById('admin_cropper_canvas');
+            if (!canvas) return;
+            
+            const startDrag = (clientX, clientY) => {
+                isAdminDragging = true;
+                adminStartX = clientX - adminPanX;
+                adminStartY = clientY - adminPanY;
+                canvas.style.cursor = 'grabbing';
+            };
+            
+            const moveDrag = (clientX, clientY) => {
+                if (!isAdminDragging) return;
+                adminPanX = clientX - adminStartX;
+                adminPanY = clientY - adminStartY;
+                renderAdminCanvas();
+            };
+            
+            const endDrag = () => {
+                isAdminDragging = false;
+                canvas.style.cursor = 'grab';
+            };
+            
+            canvas.onmousedown = (e) => startDrag(e.clientX, e.clientY);
+            canvas.onmousemove = (e) => moveDrag(e.clientX, e.clientY);
+            canvas.onmouseup = endDrag;
+            canvas.onmouseleave = endDrag;
+            
+            // Touch support for mobiles
+            canvas.ontouchstart = (e) => {
+                if (e.touches.length === 1) {
+                    startDrag(e.touches[0].clientX, e.touches[0].clientY);
+                }
+            };
+            canvas.ontouchmove = (e) => {
+                if (isAdminDragging && e.touches.length === 1) {
+                    moveDrag(e.touches[0].clientX, e.touches[0].clientY);
+                    e.preventDefault();
+                }
+            };
+            canvas.ontouchend = endDrag;
+        }
+
+        function saveAdminCrop() {
+            const canvas = document.getElementById('admin_cropper_canvas');
+            if (canvas && adminImg.src) {
+                const b64 = canvas.toDataURL('image/jpeg', 0.9);
+                document.getElementById('foto_base64').value = b64;
+                document.getElementById('final_image_preview').src = b64;
+                
+                // Update badge & buttons
+                const badge = document.getElementById('photo_status_badge');
+                if (badge) {
+                     badge.className = "bg-emerald-50 text-emerald-700 border-emerald-100 inline-block px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-wider mb-3 leading-none";
+                     badge.innerText = "Pas Foto Terunggah";
+                }
+                
+                // Hide editor workshop
+                document.getElementById('admin_crop_workshop').classList.add('hidden');
+                document.getElementById('admin_crop_workshop').classList.remove('flex');
+                document.getElementById('admin_drop_placeholder').classList.remove('hidden');
+            }
+        }
+
+        function clearPhoto() {
+            if (confirm('Apakah Anda yakin ingin menghapus pas foto siswa ini?')) {
+                document.getElementById('foto_base64').value = '';
+                document.getElementById('final_image_preview').src = 'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22120%22 height=%22160%22 viewBox=%220 0 120 160%22><rect width=%22120%22 height=%22160%22 fill=%22%23f1f5f9%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-family=%22sans-serif%22 font-size=%2210%22 fill=%22%2394a3b8%22>Pas Foto 3x4</text></svg>';
+                
+                const badge = document.getElementById('photo_status_badge');
+                if (badge) {
+                    badge.className = "bg-slate-100 text-slate-550 border-slate-200 inline-block px-3 py-1 rounded-full text-[9px] font-bold border uppercase tracking-wider mb-3 leading-none";
+                    badge.innerText = "Belum Ada Foto";
+                }
+                
+                const btnClear = document.getElementById('btn_clear_photo');
+                if (btnClear) {
+                    btnClear.remove();
+                }
             }
         }
     </script>
