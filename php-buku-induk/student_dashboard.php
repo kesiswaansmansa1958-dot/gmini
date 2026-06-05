@@ -18,6 +18,25 @@ if (!$student) {
     redirect('logout.php');
 }
 
+// Helper untuk merender kolom data interaktif dengan fitur usulan koreksi langsung
+function render_field($fieldName, $fieldLabel, $value, $isMono = false) {
+    global $student;
+    $dispValue = !empty($value) ? esc($value) : '-';
+    $monoClass = $isMono ? 'font-mono' : '';
+    ?>
+    <div class="p-3 bg-slate-50 hover:bg-blue-50/25 rounded-2xl border border-gray-150 hover:border-blue-100 transition flex items-start justify-between gap-3 group relative overflow-hidden">
+        <div class="min-w-0 flex-1 pr-1.5">
+            <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 block mb-1 leading-none"><?= esc($fieldLabel) ?></span>
+            <span class="font-bold text-slate-800 text-[11.5px] break-all leading-tight <?= $monoClass ?>"><?= $dispValue ?></span>
+        </div>
+        <button type="button" onclick="openCorrection('<?= esc($fieldName) ?>', '<?= esc($fieldLabel) ?>', this.closest('div').querySelector('.break-all').innerText.trim())" class="opacity-100 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 transition duration-150 px-2 py-1 bg-white hover:bg-blue-600 text-blue-700 hover:text-white rounded-lg text-[9.5px] font-black border border-gray-250 hover:border-blue-400 flex items-center gap-1 cursor-pointer shadow-xs whitespace-nowrap shrink-0">
+            <svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+            <span>Revisi</span>
+        </button>
+    </div>
+    <?php
+}
+
 // Handle pengajuan revisi
 $is_revision_modal_open = false;
 $revision_error = null;
@@ -173,45 +192,24 @@ $revisions = $hist_stmt->fetchAll();
                 <?php endif; ?>
             </div>
 
-            <!-- Submit Correction Request Quick Form -->
-            <div class="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-4">
-                <div class="border-b pb-2">
-                    <h4 class="font-bold text-slate-800 text-xs">Urus Koreksi Biodata Mandiri</h4>
-                    <p class="text-[10.5px] text-gray-400 font-medium">Ajukan satu per satu butir revisi jika ada kesalahan ketik</p>
+            <!-- Petunjuk Koreksi Data Terintegrasi -->
+            <div class="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm space-y-3.5">
+                <div class="flex items-start gap-3">
+                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-xs">Petunjuk Koreksi Biodata</h4>
+                        <p class="text-[10.5px] text-gray-400 mt-0.5 leading-normal">Kini mengajukan revisi jauh lebih simpel & praktis!</p>
+                    </div>
                 </div>
-
-                <form method="POST" class="space-y-3.5">
-                    <input type="hidden" name="action_submit_revision" value="1">
-                    
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Pilih Butir Isian yang Salah</label>
-                        <select name="field_info" onchange="updateSelectedField(this)" class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-bold text-slate-700 bg-white">
-                            <option value="">-- Pilih Kolom Isian --</option>
-                            <option value="nama_lengkap|Nama Lengkap Siswa">Nama Lengkap Siswa</option>
-                            <option value="nama_panggilan|Nama Panggilan">Nama Panggilan</option>
-                            <option value="tempat_lahir|Tempat Lahir">Tempat Lahir</option>
-                            <option value="tanggal_lahir|Tanggal Lahir">Tanggal Lahir</option>
-                            <option value="agama|Agama">Agama</option>
-                            <option value="alamat_lengkap|Alamat Lengkap Rumah">Alamat Lengkap Rumah</option>
-                            <option value="telepon|Nomor Telepon / HP">Nomor Telepon / HP</option>
-                            <option value="ayah_nama|Nama Ayah Kandung">Nama Ayah Kandung</option>
-                            <option value="ibu_nama|Nama Ibu Kandung">Nama Ibu Kandung</option>
-                            <option value="wali_nama|Nama Wali SMANSA">Nama Wali SMANSA</option>
-                            <option value="olahraga|Hobi Cabang Olahraga">Hobi Cabang Olahraga</option>
-                        </select>
-                        <input type="hidden" name="field_name" id="rev_field_name">
-                        <input type="hidden" name="field_label" id="rev_field_label">
-                    </div>
-
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1">Nilai Perbaikan yang Benar</label>
-                        <textarea name="new_value" required rows="2" placeholder="Tuliskan isian data yang seharusnya tertulis benar..." class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500"></textarea>
-                    </div>
-
-                    <button type="submit" class="w-full py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center justify-center">
-                        Kirim Usulan Perbaikan
-                    </button>
-                </form>
+                <p class="text-[11px] text-gray-500 leading-relaxed font-sans">
+                    Untuk memperbaiki kesalahan ketik pada data kearsipan Anda, silakan beralih ke panel <strong>Pratinjau Lembar Buku Induk Saya</strong>, temukan baris data terkait, lalu klik tombol <span class="text-blue-600 font-bold">"Revisi"</span> yang muncul di sisi kanan butir isian tersebut.
+                </p>
+                <div class="border-t pt-3 flex items-center justify-between text-[10px] text-gray-400 font-bold uppercase tracking-wider">
+                    <span>Satu Pintu Kearsipan</span>
+                    <span class="text-blue-600 font-black">SMAN 1 Purwokerto</span>
+                </div>
             </div>
 
         </div>
@@ -224,107 +222,286 @@ $revisions = $hist_stmt->fetchAll();
             <!-- Full Read Only Biodata Section -->
             <div class="bg-white rounded-3xl border border-gray-150 p-6 md:p-8 space-y-6 shadow-sm">
                 
-                <div class="flex items-center gap-3 border-b border-gray-100 pb-3">
-                    <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    </div>
-                    <div>
-                        <h3 class="font-bold text-slate-800 text-sm">Pratinjau Lembar Buku Induk Saya</h3>
-                        <p class="text-[10px] text-gray-400 font-sans font-medium">Buku pendaftaran murid baru yang sah terdokumentasikan di sekolah SMANSA</p>
-                    </div>
-                </div>
-
-                <!-- Group 1: Pribadi -->
-                <div class="space-y-3.5">
-                    <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-600">I. Identitas Pribadi Pokok</h4>
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 border-b pb-4 border-gray-100 text-xs">
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Nama Lengkap Sesuai Akta</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['nama_lengkap']) ?></span>
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 1 1 .512 1.353l-.041.02-.041-.02a.75.75 0 1 1 .512-1.353l.041.02ZM21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3 4.03-3 9-3 9 1.34 9 3Zm0 3c0 1.66-4.03 3-9 3s-9-1.34-9-3M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3m0-3c0 1.66-4.03 3-9 3s-9-1.34-9-3"></path></svg>
                         </div>
                         <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Nama Panggilan</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['nama_panggilan'] ?: '-') ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Jenis Kelamin</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['jenis_kelamin']) ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">NISN / NIS</span>
-                            <span class="font-mono font-bold text-slate-800"><?= esc($student['nisn']) ?> / <?= esc($student['nis'] ?: '-') ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Tempat, Tanggal Lahir</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['tempat_lahir'] ?: '-') ?>, <?= format_indo_date($student['tanggal_lahir']) ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Agama & Kewarganegaraan</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['agama'] ?: '-') ?> &middot; <?= esc($student['kewarganegaraan'] ?: '-') ?></span>
+                            <h3 class="font-bold text-slate-800 text-sm">Pratinjau Lembar Buku Induk Saya</h3>
+                            <p class="text-[10.5px] text-gray-400 font-sans font-medium">Buku pendaftaran murid baru yang sah terdokumentasikan di sekolah SMANSA</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Group 2: Domisili -->
-                <div class="space-y-3.5 pt-2">
-                    <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-600">II. Kontak & Alamat Tinggal</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-3 gap-x-4 border-b pb-4 border-gray-100 text-xs text-slate-850">
-                        <div class="md:col-span-2">
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Alamat Tempat Tinggal (Sesuai KK)</span>
-                            <span class="font-bold text-slate-800 leading-relaxed"><?= esc($student['alamat_lengkap'] ?: '-') ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Nomor Telepon</span>
-                            <span class="font-mono font-bold text-slate-800"><?= esc($student['telepon'] ?: '-') ?></span>
-                        </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Tinggal Dengan & Transportasi</span>
-                            <span class="font-bold text-slate-800"><?= esc($student['tinggal_dengan'] ?: 'Orang Tua') ?> &middot; <?= esc($student['transportasi'] ?: '-') ?></span>
-                        </div>
-                    </div>
+                <!-- Navigation Tabs Grid -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-slate-100 p-1.5 rounded-2xl border border-gray-200">
+                    <button type="button" id="btn_tab_identitas" onclick="switchTab('tab_identitas')" class="tab-btn py-2.5 px-3.5 bg-blue-600 text-white rounded-xl text-[11px] font-bold text-center border transition cursor-pointer" style="border-color: transparent">
+                        👤 Identitas & Jasmani
+                    </button>
+                    <button type="button" id="btn_tab_kependudukan" onclick="switchTab('tab_kependudukan')" class="tab-btn py-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[11px] font-bold text-center border border-transparent transition cursor-pointer">
+                        📑 Dokumen & Akta
+                    </button>
+                    <button type="button" id="btn_tab_akademik" onclick="switchTab('tab_akademik')" class="tab-btn py-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[11px] font-bold text-center border border-transparent transition cursor-pointer">
+                        🎓 Akademik & Minat
+                    </button>
+                    <button type="button" id="btn_tab_keluarga" onclick="switchTab('tab_keluarga')" class="tab-btn py-2.5 px-3.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-[11px] font-bold text-center border border-transparent transition cursor-pointer">
+                        👨‍👩‍👦 Orang Tua & Wali
+                    </button>
                 </div>
 
-                <!-- Group 3: Orang Tua -->
-                <div class="space-y-3.5 pt-2">
-                    <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-600">III. Informasi Orang Tua Kandung</h4>
-                    <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Nama Ayah Kandung</span>
-                            <span class="font-bold text-slate-800 block"><?= esc($student['ayah_nama'] ?: '-') ?></span>
-                            <?php if ($student['ayah_nama']): ?>
-                                <span class="text-[10px] text-gray-400 block mt-0.5"><?= esc($student['ayah_pekerjaan'] ?: '-') ?> &middot; Hp. <?= esc($student['ayah_telepon'] ?: '-') ?></span>
-                            <?php endif; ?>
+                <!-- ================= TAB CONTENT 1: IDENTITAS & JASMANI ================= -->
+                <div id="tab_identitas" class="tab-content space-y-6">
+                    <!-- Section A -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">A. Keterangan Tentang Diri Peserta Didik</h4>
                         </div>
-                        <div>
-                            <span class="text-[9.5px] text-gray-400 block mb-0.5">Nama Ibu Kandung</span>
-                            <span class="font-bold text-slate-800 block"><?= esc($student['ibu_nama'] ?: '-') ?></span>
-                            <?php if ($student['ibu_nama']): ?>
-                                <span class="text-[10px] text-gray-400 block mt-0.5"><?= esc($student['ibu_pekerjaan'] ?: '-') ?> &middot; Hp. <?= esc($student['ibu_telepon'] ?: '-') ?></span>
-                            <?php endif; ?>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('nama_lengkap', 'Nama Lengkap Siswa sesuai akta', $student['nama_lengkap']); ?>
+                            <?php render_field('nama_panggilan', 'Nama Panggilan', $student['nama_panggilan']); ?>
+                            <?php render_field('jenis_kelamin', 'Jenis Kelamin', $student['jenis_kelamin']); ?>
+                            <?php render_field('tempat_lahir', 'Tempat Lahir', $student['tempat_lahir']); ?>
+                            <?php render_field('tanggal_lahir', 'Tanggal Lahir', $student['tanggal_lahir'], true); ?>
+                            <?php render_field('agama', 'Agama / Kepercayaan', $student['agama']); ?>
+                            <?php render_field('kewarganegaraan', 'Kewarganegaraan', $student['kewarganegaraan']); ?>
+                            <?php render_field('bahasa_sehari_hari', 'Bahasa Sehari-hari', $student['bahasa_sehari_hari']); ?>
                         </div>
                     </div>
-                </div>
 
-                <!-- Group 4: Guardian -->
-                <?php if ($student['has_wali']): ?>
-                    <div class="space-y-3.5 pt-4 border-t">
-                        <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-600">IV. Informasi Wali Murid SMANSA</h4>
-                        <div class="grid grid-cols-2 md:grid-cols-3 gap-y-3 gap-x-4 text-xs">
-                            <div>
-                                <span class="text-[9.5px] text-gray-400 block mb-0.5">Nama Lengkap Wali</span>
-                                <span class="font-bold text-slate-800"><?= esc($student['wali_nama']) ?></span>
+                    <!-- Section B -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">B. Status Hubungan di Keluarga</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('status_keluarga', 'Status Hubungan Keluarga', $student['status_keluarga']); ?>
+                            <?php render_field('anak_ke', 'Anak Ke-', $student['anak_ke']); ?>
+                            <?php render_field('saudara_kandung', 'Jumlah Saudara Kandung', $student['saudara_kandung']); ?>
+                            <?php render_field('saudara_tiri', 'Jumlah Saudara Tiri', $student['saudara_tiri']); ?>
+                            <?php render_field('saudara_angkat', 'Jumlah Saudara Angkat', $student['saudara_angkat']); ?>
+                            <?php render_field('saudara_kembar', 'Jumlah Saudara Kembar', $student['saudara_kembar']); ?>
+                            <?php render_field('anak_yatim_piatu', 'Status Yatim / Piatu', $student['anak_yatim_piatu']); ?>
+                        </div>
+                    </div>
+
+                    <!-- Section C -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">C. Keterangan Tempat Tinggal & Komuter</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <div class="sm:col-span-2">
+                                <?php render_field('alamat_lengkap', 'Alamat Lengkap Domisili (Sesuai KK)', $student['alamat_lengkap']); ?>
                             </div>
-                            <div>
-                                <span class="text-[9.5px] text-gray-400 block mb-0.5">Hubungan Keluarga</span>
-                                <span class="font-bold text-slate-800"><?= esc($student['wali_relationships_siswa'] ?: 'Wali') ?></span>
+                            <?php render_field('telepon', 'Nomor Telepon Rumah / HP Aktif', $student['telepon'], true); ?>
+                            <?php render_field('tinggal_dengan', 'Tinggal Dengan', $student['tinggal_dengan']); ?>
+                            <?php render_field('jarak_ke_sekolah', 'Jarak Tempat Tinggal ke Sekolah', $student['jarak_ke_sekolah']); ?>
+                            <?php render_field('transportasi', 'Transportasi Utama ke Sekolah', $student['transportasi']); ?>
+                        </div>
+                    </div>
+
+                    <!-- Section D -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">D. Keterangan Jasmani & Kesehatan</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('golongan_darah', 'Golongan Darah', $student['golongan_darah']); ?>
+                            <?php render_field('tinggi_badan', 'Tinggi Badan (cm)', $student['tinggi_badan']); ?>
+                            <?php render_field('berat_badan', 'Berat Badan (kg)', $student['berat_badan']); ?>
+                            <div class="sm:col-span-3">
+                                <?php render_field('penyakit_pernah_diderita', 'Riwayat Penyakit yang Pernah Diderita', $student['penyakit_pernah_diderita']); ?>
                             </div>
-                            <div>
-                                <span class="text-[9.5px] text-gray-400 block mb-0.5">No Telepon Wali</span>
-                                <span class="font-mono font-bold text-slate-800"><?= esc($student['wali_telepon'] ?: '-') ?></span>
+                            <div class="sm:col-span-3">
+                                <?php render_field('kelainan_jasmani', 'Kelainan Jasmani / Kebutuhan Khusus', $student['kelainan_jasmani']); ?>
                             </div>
                         </div>
                     </div>
-                <?php endif; ?>
+                </div>
+
+                <!-- ================= TAB CONTENT 2: KEPENDUDUKAN & REGISTRASI ================= -->
+                <div id="tab_kependudukan" class="tab-content space-y-6 hidden">
+                    <!-- Section A -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">A. Dokumen Resmi Kependudukan & Registrasi</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('nisn', 'Nomor Induk Siswa Nasional (NISN)', $student['nisn'], true); ?>
+                            <?php render_field('nis', 'Nomor Induk Sekolah (NIS Lokal)', $student['nis'], true); ?>
+                            <?php render_field('nik', 'Nomor Induk Kependudukan (NIK)', $student['nik'], true); ?>
+                            <?php render_field('no_pendaftaran', 'Nomor Pendaftaran PPDB', $student['no_pendaftaran'], true); ?>
+                            <?php render_field('no_kk', 'Nomor Kartu Keluarga (KK)', $student['no_kk'], true); ?>
+                            <?php render_field('no_kip', 'Nomor KIP (Kartu Indonesia Pintar)', $student['no_kip'], true); ?>
+                            <?php render_field('id_dtks', 'ID DTKS Terdaftar', $student['id_dtks'], true); ?>
+                        </div>
+                    </div>
+
+                    <!-- Section B -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">B. Keanggotaan SMAN 1 Purwokerto</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('kelas_sekarang', 'Rombel Kelas Saat Ini', $student['kelas_sekarang']); ?>
+                            <?php render_field('program_keahlian', 'Program Keahlian / Pilihan Jurusan', $student['program_keahlian']); ?>
+                            <?php render_field('tanggal_masuk', 'Tanggal Terdaftar Masuk', $student['tanggal_masuk'], true); ?>
+                            <?php render_field('nomor_stb', 'Nomor Buku Induk SMANSA (STB)', $student['nomor_stb'], true); ?>
+                            <?php render_field('beasiswa', 'Status / Beasiswa Ko-kurikuler', $student['beasiswa']); ?>
+                            <?php render_field('tanggal_keluar', 'Tanggal Keluar / Mutasi Sekolah', $student['tanggal_keluar'], true); ?>
+                            <div class="sm:col-span-3">
+                                <?php render_field('alasan_keluar', 'Alasan Keluar / Drop Out / Mutasi', $student['alasan_keluar']); ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB CONTENT 3: AKADEMIK & MINAT ================= -->
+                <div id="tab_akademik" class="tab-content space-y-6 hidden">
+                    <!-- Section A -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">A. Asal Sekolah Menengah Pertama (SMP/MTs)</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('lulusan_dari', 'Nama Sekolah Asal SMP/MTs', $student['lulusan_dari']); ?>
+                            <?php render_field('tanggal_ijazah', 'Tanggal Ijazah / Kelulusan', $student['tanggal_ijazah'], true); ?>
+                            <?php render_field('nomor_ijazah', 'Nomor Surat Ijazah Kelulusan', $student['nomor_ijazah'], true); ?>
+                            <?php render_field('pindahan_dari', 'Nama Sekolah Pindahan (Mutasi Masuk)', $student['pindahan_dari']); ?>
+                            <?php render_field('lama_belajar', 'Lama Belajar di SMP (Tahun)', $student['lama_belajar']); ?>
+                            <div class="sm:col-span-3">
+                                <?php render_field('alasan_pindah', 'Alasan Mutasi Pindah Masuk', $student['alasan_pindah']); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section B -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">B. Rerata Nilai Rapor Evaluasi SMP/MTs</h4>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+                            <?php render_field('rerata_agama', 'Pendidikan Agama', $student['rerata_agama'], true); ?>
+                            <?php render_field('rerata_ppkn', 'PPKn', $student['rerata_ppkn'], true); ?>
+                            <?php render_field('rerata_b_indonesia', 'B. Indonesia', $student['rerata_b_indonesia'], true); ?>
+                            <?php render_field('rerata_matematika', 'Matematika', $student['rerata_matematika'], true); ?>
+                            <?php render_field('rerata_ipa', 'IPA', $student['rerata_ipa'], true); ?>
+                            <?php render_field('rerata_ips', 'IPS', $student['rerata_ips'], true); ?>
+                            <?php render_field('rerata_b_inggris', 'B. Inggris', $student['rerata_b_inggris'], true); ?>
+                        </div>
+                    </div>
+
+                    <!-- Section C -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">C. Prestasi & Rekam Bakat Kegiatan</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <?php render_field('prestasi_akademik', 'Keterangan Prestasi Akademik', $student['prestasi_akademik']); ?>
+                            <?php render_field('prestasi_non_akademik', 'Keterangan Prestasi Non-Akademik', $student['prestasi_non_akademik']); ?>
+                            <?php render_field('kesenian', 'Kegemaran Kesenian / Seni', $student['kesenian']); ?>
+                            <?php render_field('olahraga', 'Kegemaran Cabang Olahraga', $student['olahraga']); ?>
+                            <div class="sm:col-span-2">
+                                <?php render_field('organisasi', 'Pengalaman / Keanggotaan Organisasi Siswa', $student['organisasi']); ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ================= TAB CONTENT 4: DATA ORANG TUA & WALI ================= -->
+                <div id="tab_keluarga" class="tab-content space-y-6 hidden">
+                    <!-- Section A -->
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">A. Keterangan Tentang Ayah Kandung</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('ayah_nama', 'Nama Lengkap Ayah Kandung', $student['ayah_nama']); ?>
+                            <?php render_field('ayah_is_masih_hidup', 'Keberadaan Ayah (1: Hidup / 0: Wafat)', $student['ayah_is_masih_hidup'] ? '1 (Masih Hidup)' : '0 (Wafat)', true); ?>
+                            <?php render_field('ayah_nik', 'Nomor NIK Ayah', $student['ayah_nik'], true); ?>
+                            <?php render_field('ayah_tempat_lahir', 'Tempat Lahir Ayah', $student['ayah_tempat_lahir']); ?>
+                            <?php render_field('ayah_tanggal_lahir', 'Tanggal Lahir Ayah', $student['ayah_tanggal_lahir'], true); ?>
+                            <?php render_field('ayah_agama', 'Agama Ayah', $student['ayah_agama']); ?>
+                            <?php render_field('ayah_kewarganegaraan', 'Kewarganegaraan Ayah', $student['ayah_kewarganegaraan']); ?>
+                            <?php render_field('ayah_pendidikan', 'Pendidikan Terakhir Ayah', $student['ayah_pendidikan']); ?>
+                            <?php render_field('ayah_pekerjaan', 'Pekerjaan Utama Ayah', $student['ayah_pekerjaan']); ?>
+                            <?php render_field('ayah_penghasilan', 'Estimasi Rerata Penghasilan Ayah', $student['ayah_penghasilan']); ?>
+                            <?php render_field('ayah_telepon', 'Nomor HP / Telepon Ayah', $student['ayah_telepon'], true); ?>
+                            <div class="sm:col-span-2">
+                                <?php render_field('ayah_alamat', 'Alamat Rumah Ayah Kandung', $student['ayah_alamat']); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section B -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">B. Keterangan Tentang Ibu Kandung</h4>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                            <?php render_field('ibu_nama', 'Nama Lengkap Ibu Kandung', $student['ibu_nama']); ?>
+                            <?php render_field('ibu_is_masih_hidup', 'Keberadaan Ibu (1: Hidup / 0: Wafat)', $student['ibu_is_masih_hidup'] ? '1 (Masih Hidup)' : '0 (Wafat)', true); ?>
+                            <?php render_field('ibu_nik', 'Nomor NIK Ibu', $student['ibu_nik'], true); ?>
+                            <?php render_field('ibu_tempat_lahir', 'Tempat Lahir Ibu', $student['ibu_tempat_lahir']); ?>
+                            <?php render_field('ibu_tanggal_lahir', 'Tanggal Lahir Ibu', $student['ibu_tanggal_lahir'], true); ?>
+                            <?php render_field('ibu_agama', 'Agama Ibu', $student['ibu_agama']); ?>
+                            <?php render_field('ibu_kewarganegaraan', 'Kewarganegaraan Ibu', $student['ibu_kewarganegaraan']); ?>
+                            <?php render_field('ibu_pendidikan', 'Pendidikan Terakhir Ibu', $student['ibu_pendidikan']); ?>
+                            <?php render_field('ibu_pekerjaan', 'Pekerjaan Utama Ibu', $student['ibu_pekerjaan']); ?>
+                            <?php render_field('ibu_penghasilan', 'Estimasi Rerata Penghasilan Ibu', $student['ibu_penghasilan']); ?>
+                            <?php render_field('ibu_telepon', 'Nomor HP / Telepon Ibu', $student['ibu_telepon'], true); ?>
+                            <div class="sm:col-span-2">
+                                <?php render_field('ibu_alamat', 'Alamat Rumah Ibu Kandung', $student['ibu_alamat']); ?>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section C -->
+                    <div class="space-y-3 pt-2">
+                        <div class="flex items-center gap-1.5 pb-1 border-b border-slate-100">
+                            <span class="w-1.5 h-3 bg-blue-600 rounded-full"></span>
+                            <h4 class="text-[10px] font-black uppercase tracking-widest text-blue-705">C. Keterangan Tentang Wali Peserta Didik</h4>
+                        </div>
+                        <div class="bg-slate-50 border border-gray-150 p-4.5 rounded-2xl flex items-center justify-between gap-3 text-xs mb-4">
+                            <span class="font-bold text-slate-700">Terdapat Status Kepemilikan Wali Aktif?</span>
+                            <div class="flex gap-2 font-black">
+                                <span class="px-3 py-1 bg-<?= $student['has_wali'] ? 'blue-50 text-blue-700 border-blue-100' : 'slate-100 text-slate-500 border-slate-200' ?> border rounded-lg text-[10px] uppercase">
+                                    <?= $student['has_wali'] ? 'Aktif' : 'Tidak Memiliki Wali' ?>
+                                </span>
+                            </div>
+                        </div>
+                        <?php if ($student['has_wali']): ?>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <?php render_field('wali_nama', 'Nama Lengkap Wali Siswa', $student['wali_nama']); ?>
+                                <?php render_field('wali_hubungan_siswa', 'Hubungan Kekerabatan Siswa', $student['wali_hubungan_siswa']); ?>
+                                <?php render_field('wali_nik', 'Nomor NIK Wali', $student['wali_nik'], true); ?>
+                                <?php render_field('wali_tempat_lahir', 'Tempat Lahir Wali', $student['wali_tempat_lahir']); ?>
+                                <?php render_field('wali_tanggal_lahir', 'Tanggal Lahir Wali', $student['wali_tanggal_lahir'], true); ?>
+                                <?php render_field('wali_agama', 'Agama Wali', $student['wali_agama']); ?>
+                                <?php render_field('wali_kewarganegaraan', 'Kewarganegaraan Wali', $student['wali_kewarganegaraan']); ?>
+                                <?php render_field('wali_pendidikan', 'Pendidikan Terakhir Wali', $student['wali_pendidikan']); ?>
+                                <?php render_field('wali_pekerjaan', 'Pekerjaan Utama Wali', $student['wali_pekerjaan']); ?>
+                                <?php render_field('wali_penghasilan', 'Estimasi Rerata Penghasilan Wali', $student['wali_penghasilan']); ?>
+                                <?php render_field('wali_telepon', 'Nomor HP / Telepon Wali', $student['wali_telepon'], true); ?>
+                                <div class="sm:col-span-2">
+                                    <?php render_field('wali_alamat', 'Alamat Rumah Tinggal Wali', $student['wali_alamat']); ?>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
 
             </div>
 
@@ -380,6 +557,57 @@ $revisions = $hist_stmt->fetchAll();
         <p>&copy; <?= date('Y') ?> SMA Negeri 1 Purwokerto. Hak Cipta Dilindungi.</p>
     </footer>
 
+    <!-- MODAL POPUP UNTUK AJUKAN KOREKSI DATA SIMPEL -->
+    <div id="correctionModal" class="fixed inset-0 z-50 hidden bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl border border-gray-150 max-w-md w-full overflow-hidden shadow-2xl animate-fadeIn">
+            <!-- Modal Header -->
+            <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-slate-950 text-white">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 bg-blue-600 rounded-lg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-[11px] uppercase tracking-wider text-slate-100">Ajukan Koreksi Data</h3>
+                        <p class="text-[9px] text-gray-400 font-sans font-medium">Ubah satu per satu butir kearsipan</p>
+                    </div>
+                </div>
+                <button type="button" onclick="closeCorrection()" class="text-gray-400 hover:text-white transition text-2xl font-bold leading-none cursor-pointer">&times;</button>
+            </div>
+            
+            <!-- Modal Body -->
+            <form method="POST" class="p-5 space-y-4">
+                <input type="hidden" name="action_submit_revision" value="1">
+                <input type="hidden" name="field_name" id="modal_field_name">
+                <input type="hidden" name="field_label" id="modal_field_label">
+                
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Butir Isian yang Direvisi</label>
+                    <div id="modal_field_label_display" class="px-3 py-2.5 bg-slate-50 border border-gray-150 rounded-xl text-xs font-bold text-slate-800"></div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Nilai Saat Ini (Terdaftar)</label>
+                    <div id="modal_old_value_display" class="px-3 py-2.5 bg-rose-50/50 border border-rose-105 rounded-xl text-xs font-mono font-bold text-rose-900 break-words italic"></div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">Nilai Perbaikan yang Benar</label>
+                    <textarea name="new_value" id="modal_new_value_input" required rows="3" placeholder="Tuliskan isian data baru yang seharusnya terdaftar benar..." class="w-full px-3 py-2 border border-gray-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+
+                <!-- Action Button Controls -->
+                <div class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2 text-xs">
+                    <button type="button" onclick="closeCorrection()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-bold transition">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition shadow-md shadow-blue-500/10 cursor-pointer">
+                        Kirim Usulan Perbaikan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- MODAL POPUP UNTUK EDIT & UNGGAH PAS FOTO -->
     <div id="photoEditorModal" class="fixed inset-0 z-50 hidden bg-slate-900/65 backdrop-blur-xs flex items-center justify-center p-4">
         <div class="bg-white rounded-3xl border border-gray-150 max-w-md w-full overflow-hidden shadow-2xl animate-fadeIn">
@@ -411,7 +639,7 @@ $revisions = $hist_stmt->fetchAll();
                     </div>
                     <input type="file" id="modalFilePicker" accept="image/*" class="hidden" onchange="handleFileSelect(event)">
                 </div>
-
+ 
                 <!-- Cropper Workshop Controls -->
                 <div id="editorWorkspace" class="hidden space-y-4">
                     <div class="flex flex-col items-center justify-center gap-3">
@@ -440,7 +668,7 @@ $revisions = $hist_stmt->fetchAll();
                         </div>
                         <p class="text-[9px] text-gray-400 font-bold font-sans italic text-center">Geser gambar untuk pemosisian kepala. Atur perbesaran di bawah.</p>
                     </div>
-
+ 
                     <!-- Fine-tuning Slider Controls -->
                     <div class="space-y-2.5 bg-slate-50 p-3.5 rounded-2xl border border-gray-200">
                         <div>
@@ -450,7 +678,7 @@ $revisions = $hist_stmt->fetchAll();
                             </div>
                             <input id="zoom_slider" type="range" min="1.0" max="4.0" step="0.02" value="1.0" class="w-full cursor-pointer accent-blue-600" oninput="adjustZoom(this.value)">
                         </div>
-
+ 
                         <div class="flex items-center justify-between pt-2 border-t border-gray-150">
                             <span class="text-[9.5px] font-extrabold text-slate-500 uppercase tracking-wider">Rotasi 90 Derajat</span>
                             <div class="flex items-center gap-1">
@@ -467,7 +695,7 @@ $revisions = $hist_stmt->fetchAll();
                         </div>
                     </div>
                 </div>
-
+ 
                 <!-- Form Submit action -->
                 <form id="savePhotoForm" method="POST" class="pt-3 border-t border-gray-100 flex items-center justify-end gap-2 text-xs">
                     <input type="hidden" name="action_update_photo" value="1">
@@ -482,21 +710,41 @@ $revisions = $hist_stmt->fetchAll();
             </div>
         </div>
     </div>
-
+ 
     <script>
-        function updateSelectedField(selectEl) {
-            const val = selectEl.value;
-            const targetFieldName = document.getElementById('rev_field_name');
-            const targetFieldLabel = document.getElementById('rev_field_label');
+        // ================= TAB SWITCHER ENGINE =================
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-blue-600', 'text-white');
+                btn.classList.add('bg-slate-50', 'text-slate-600', 'hover:bg-slate-100');
+            });
+            const activeBtn = document.getElementById('btn_' + tabId);
+            activeBtn.classList.remove('bg-slate-50', 'text-slate-600', 'hover:bg-slate-100');
+            activeBtn.classList.add('bg-blue-600', 'text-white');
+        }
 
-            if (val) {
-                const parts = val.split('|');
-                targetFieldName.value = parts[0];
-                targetFieldLabel.value = parts[1];
-            } else {
-                targetFieldName.value = '';
-                targetFieldLabel.value = '';
-            }
+        // ================= UNIFIED CONTEXTUAL REVISION MODAL POPUP =================
+        function openCorrection(fieldName, fieldLabel, currentValue) {
+            document.getElementById('modal_field_name').value = fieldName;
+            document.getElementById('modal_field_label').value = fieldLabel;
+            document.getElementById('modal_field_label_display').innerText = fieldLabel;
+            
+            const processedValue = currentValue.trim();
+            document.getElementById('modal_old_value_display').innerText = (processedValue === '-' || processedValue === '') ? '(Belum diisi / Kosong)' : processedValue;
+            document.getElementById('modal_new_value_input').value = (processedValue === '-' || processedValue === '') ? '' : processedValue;
+            
+            const modal = document.getElementById('correctionModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCorrection() {
+            const modal = document.getElementById('correctionModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         // ================= PAS FOTO CROPPER CONTROLS & MODEL ENGINE =================
