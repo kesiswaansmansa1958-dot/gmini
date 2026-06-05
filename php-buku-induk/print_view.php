@@ -198,16 +198,47 @@ function mark($val) {
 
         <!-- ================= DOCUMENT TYPE 1: BUKU INDUK ================= -->
         <?php if ($doc_type === 'BUKU_INDUK'): ?>
-            <div class="header-logo">
-                <h2>Pemerintah Provinsi Jawa Tengah</h2>
-                <h2>Dinas Pendidikan dan Kebudayaan</h2>
-                <h1>SMA Negeri 1 Purwokerto</h1>
-                <p>Jalan Gatot Subroto No. 73 Kode Pos 53116 Telepon (0281) 635116 Purwokerto</p>
-            </div>
+            <!-- Kop Cetak Buku Induk dengan Logo Kanan dan Kiri -->
+            <table style="width: 100%; border-collapse: collapse; border-bottom: 3px double #000; padding-bottom: 12px; margin-bottom: 25px;">
+                <tr>
+                    <td style="width: 80px; text-align: left; vertical-align: middle; padding: 0;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Seal_of_Central_Java.svg/200px-Seal_of_Central_Java.svg.png" style="width: 70px; height: auto; display: block;" alt="Logo Jateng">
+                    </td>
+                    <td style="text-align: center; vertical-align: middle; padding: 0 10px;">
+                        <h2 style="margin: 0; font-size: 11pt; font-weight: bold; text-transform: uppercase; color: #000; line-height: 1.3;">Pemerintah Provinsi Jawa Tengah</h2>
+                        <h2 style="margin: 2px 0; font-size: 11.5pt; font-weight: bold; text-transform: uppercase; color: #000; line-height: 1.3;">Dinas Pendidikan dan Kebudayaan</h2>
+                        <h1 style="margin: 4px 0; font-size: 16pt; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; color: #000; line-height: 1.2;">SMA Negeri 1 Purwokerto</h1>
+                        <p style="margin: 0; font-size: 8.5pt; font-style: italic; color: #000; line-height: 1.3;">Jalan Gatot Subroto No. 73 Kode Pos 53116 Telepon (0281) 635116 Purwokerto</p>
+                    </td>
+                    <td style="width: 80px; text-align: right; vertical-align: middle; padding: 0;">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Logo_Tut_Wuri_Handayani.png/220px-Logo_Tut_Wuri_Handayani.png" style="width: 70px; height: auto; display: block; float: right;" alt="Logo Tut Wuri">
+                    </td>
+                </tr>
+            </table>
 
-            <div class="doc-title">
-                Lembar Buku Induk Peserta Didik Baru
-            </div>
+            <!-- Judul Lembar & Wadah Pas Foto Atas Kanan -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+                <tr>
+                    <td style="vertical-align: middle; text-align: left; padding: 0;">
+                        <span style="font-size: 13pt; font-weight: bold; text-decoration: underline; text-transform: uppercase; display: block; margin-bottom: 8px;">
+                            Lembar Buku Induk Peserta Didik Baru
+                        </span>
+                        <div style="font-size: 9.5pt; color: #111; line-height: 1.5;">
+                            <strong>STATUS KELAS:</strong> <?= cell($student['kelas_sekarang']) ?> &middot; Jurusan <?= cell($student['program_keahlian']) ?><br>
+                            <strong>KEANGGOTAAN:</strong> NISN: <?= cell($student['nisn']) ?> &middot; No. Induk SMANSA: <?= cell($student['nomor_stb']) ?>
+                        </div>
+                    </td>
+                    <td style="width: 30mm; text-align: right; vertical-align: top; padding: 0;">
+                        <div style="width: 30mm; height: 40mm; border: 1.5px solid #000; float: right; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #fafafa; overflow: hidden; box-sizing: border-box;">
+                            <?php if ($student['foto']): ?>
+                                <img src="<?= $student['foto'] ?>" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+                            <?php else: ?>
+                                <span style="font-size: 8pt; line-height: 1.2; font-weight: bold; color: #444; text-align: center; padding: 5px;">PAS FOTO<br>3 x 4</span>
+                            <?php endif; ?>
+                        </div>
+                    </td>
+                </tr>
+            </table>
 
             <table class="table-data">
                 <!-- I. KETERANGAN DATA SISWA -->
@@ -436,24 +467,22 @@ function mark($val) {
                 </tr>
             </table>
 
-            <!-- Signatures layout -->
+            <!-- Signatures layout (Student on the Left, Principal on the Right) -->
             <table class="sig-row">
                 <tr>
-                    <td style="text-align: left; padding-left: 20px;">
-                        <div class="photo-box">
-                            <?php if ($student['foto']): ?>
-                                <img src="<?= $student['foto'] ?>" style="width: 100%; height: 100%; object-cover: cover;">
-                            <?php else: ?>
-                                Pas Foto 3x4
-                            <?php endif; ?>
-                        </div>
+                    <td style="text-align: left; padding-left: 40px; vertical-align: top; width: 50%;">
+                        <p>&nbsp;</p>
+                        <p>Tanda Tangan Peserta Didik / Siswa,</p>
+                        <div class="sig-space" style="height: 75px;"></div>
+                        <p><strong><u><?= cell($student['nama_lengkap']) ?></u></strong></p>
+                        <p style="margin: 3px 0 0 0; font-size: 9pt; color: #555;">NISN: <?= cell($student['nisn']) ?></p>
                     </td>
-                    <td>
+                    <td style="text-align: center; vertical-align: top; width: 50%;">
                         <p>Purwokerto, <?= format_indo_date(date('Y-m-d')) ?></p>
                         <p>Kepala SMA Negeri 1 Purwokerto</p>
-                        <div class="sig-space"></div>
+                        <div class="sig-space" style="height: 75px;"></div>
                         <p><strong><u>Drs. RUSLAN ASY'ARI, M.Pd</u></strong></p>
-                        <p>NIP. 19690104 199303 1 002</p>
+                        <p style="margin: 3px 0 0 0; font-size: 9pt; color: #555;">NIP. 19690104 199303 1 002</p>
                     </td>
                 </tr>
             </table>
