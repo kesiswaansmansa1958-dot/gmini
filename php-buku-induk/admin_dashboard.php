@@ -38,46 +38,89 @@ if (isset($_GET['action']) && $_GET['action'] === 'delete_student' && isset($_GE
     redirect('admin_dashboard.php');
 }
 
-// Handle Approve / Reject Correction Request
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_request'])) {
-    $req_id = (int)$_POST['request_id'];
-    $decision = $_POST['decision'] ?? ''; // 'approve' or 'reject'
-    $notes = trim($_POST['notes'] ?? '');
+// Handle Approve / Reject Correction Request (Individual or Bulk per Student)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (isset($_POST['action_request']) || isset($_POST['action_request_bulk']))) {
+    $allowed_fields = [
+        'nama_lengkap', 'nama_panggilan', 'nis', 'nisn', 'nik', 'no_pendaftaran', 'no_kk', 'no_kip', 'id_dtks',
+        'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'agama', 'kewarganegaraan', 'anak_ke', 'saudara_kandung',
+        'saudara_tiri', 'saudara_angkat', 'saudara_kembar', 'anak_yatim_piatu', 'status_keluarga', 'bahasa_sehari_hari',
+        'alamat_lengkap', 'telepon', 'tinggal_dengan', 'jarak_ke_sekolah', 'transportasi',
+        'golongan_darah', 'penyakit_pernah_diderita', 'kelainan_jasmani', 'tinggi_badan', 'berat_badan',
+        'lulusan_dari', 'tanggal_ijazah', 'nomor_ijazah', 'pindahan_dari', 'alasan_pindah', 'lama_belajar',
+        'rerata_agama', 'rerata_ppkn', 'rerata_b_indonesia', 'rerata_matematika', 'rerata_ipa', 'rerata_ips', 'rerata_b_inggris',
+        'prestasi_akademik', 'prestasi_non_akademik', 'kelas_sekarang', 'program_keahlian', 'nomor_stb', 'beasiswa', 'tanggal_masuk',
+        'tanggal_keluar', 'alasan_keluar', 'kesenian', 'olahraga', 'organisasi',
+        'ayah_nama', 'ayah_nik', 'ayah_tempat_lahir', 'ayah_tanggal_lahir', 'ayah_agama', 'ayah_kewarganegaraan', 'ayah_pendidikan', 'ayah_pekerjaan', 'ayah_penghasilan', 'ayah_alamat', 'ayah_telepon', 'ayah_is_masih_hidup',
+        'ibu_nama', 'ibu_nik', 'ibu_tempat_lahir', 'ibu_tanggal_lahir', 'ibu_agama', 'ibu_kewarganegaraan', 'ibu_pendidikan', 'ibu_pekerjaan', 'ibu_penghasilan', 'ibu_alamat', 'ibu_telepon', 'ibu_is_masih_hidup',
+        'has_wali', 'wali_nama', 'wali_nik', 'wali_tempat_lahir', 'wali_tanggal_lahir', 'wali_agama', 'wali_kewarganegaraan', 'wali_pendidikan', 'wali_pekerjaan', 'wali_penghasilan', 'wali_alamat', 'wali_telepon', 'wali_hubungan_siswa'
+    ];
 
-    $stmt = $db->prepare("SELECT * FROM correction_requests WHERE id = ?");
-    $stmt->execute([$req_id]);
-    $req = $stmt->fetch();
+    if (isset($_POST['action_request'])) {
+        $req_id = (int)$_POST['request_id'];
+        $decision = $_POST['decision'] ?? ''; // 'approve' or 'reject'
+        $notes = trim($_POST['notes'] ?? '');
 
-    if ($req && $req['status'] === 'Diproses') {
-        if ($decision === 'approve') {
-            // Apply new value to students table
-            $field_name = $req['field_name'];
-            $new_val = $req['new_value'];
-            
-            // Validasi nama kolom aman (mengurangi SQL injection permukaan)
-            $allowed_fields = [
-                'nama_lengkap', 'nama_panggilan', 'nis', 'nisn', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'agama', 'kewarganegaraan',
-                'alamat_lengkap', 'telepon', 'tinggal_dengan', 'jarak_ke_sekolah', 'transportasi', 'golongan_darah', 'penyakit_pernah_diderita',
-                'kelainan_jasmani', 'tinggi_badan', 'berat_badan', 'lulusan_dari', 'tanggal_ijazah', 'nomor_ijazah', 'prestasi_akademik', 
-                'prestasi_non_akademik', 'kelas_sekarang', 'program_keahlian', 'nomor_stb', 'beasiswa',
-                'ayah_nama', 'ayah_nik', 'ayah_agama', 'ayah_pekerjaan', 'ayah_alamat', 'ayah_telepon',
-                'ibu_nama', 'ibu_nik', 'ibu_agama', 'ibu_pekerjaan', 'ibu_alamat', 'ibu_telepon',
-                'wali_nama', 'wali_nik', 'wali_agama', 'wali_pekerjaan', 'wali_alamat', 'wali_telepon'
-            ];
-            
-            if (in_array($field_name, $allowed_fields)) {
-                $up_stud = $db->prepare("UPDATE students SET `{$field_name}` = ? WHERE id = ?");
-                $up_stud->execute([$new_val, $req['student_id']]);
+        $stmt = $db->prepare("SELECT * FROM correction_requests WHERE id = ?");
+        $stmt->execute([$req_id]);
+        $req = $stmt->fetch();
+
+        if ($req && $req['status'] === 'Diproses') {
+            if ($decision === 'approve') {
+                $field_name = $req['field_name'];
+                $new_val = $req['new_value'];
+                
+                if (in_array($field_name, $allowed_fields)) {
+                    $up_stud = $db->prepare("UPDATE students SET `{$field_name}` = ? WHERE id = ?");
+                    $up_stud->execute([$new_val, $req['student_id']]);
+                }
+                
+                $up_req = $db->prepare("UPDATE correction_requests SET status = 'Disetujui', notes = ? WHERE id = ?");
+                $up_req->execute([$notes ?: 'Disetujui oleh Administrator', $req_id]);
+                set_flash_message("Usulan revisi '{$req['field_label']}' berhasil DISETUJUI dan diterapkan.", "success");
+                
+            } elseif ($decision === 'reject') {
+                $up_req = $db->prepare("UPDATE correction_requests SET status = 'Ditolak', notes = ? WHERE id = ?");
+                $up_req->execute([$notes ?: 'Ditolak oleh Administrator', $req_id]);
+                set_flash_message("Usulan revisi '{$req['field_label']}' berhasil DITOLAK.", "warning");
             }
-            
-            $up_req = $db->prepare("UPDATE correction_requests SET status = 'Disetujui', notes = ? WHERE id = ?");
-            $up_req->execute([$notes ?: 'Disetujui oleh Administrator', $req_id]);
-            set_flash_message("Usulan revisi '{$req['field_label']}' berhasil DISETUJUI dan diterapkan.", "success");
-            
-        } elseif ($decision === 'reject') {
-            $up_req = $db->prepare("UPDATE correction_requests SET status = 'Ditolak', notes = ? WHERE id = ?");
-            $up_req->execute([$notes ?: 'Ditolak oleh Administrator', $req_id]);
-            set_flash_message("Usulan revisi '{$req['field_label']}' berhasil DITOLAK.", "warning");
+        }
+    }
+
+    if (isset($_POST['action_request_bulk'])) {
+        $student_id = (int)$_POST['student_id'];
+        $decision = $_POST['decision'] ?? ''; // 'approve_all' or 'reject_all'
+        $notes = trim($_POST['notes'] ?? '');
+
+        $stmt = $db->prepare("SELECT * FROM correction_requests WHERE student_id = ? AND status = 'Diproses'");
+        $stmt->execute([$student_id]);
+        $pending_items = $stmt->fetchAll();
+
+        if (!empty($pending_items)) {
+            if ($decision === 'approve_all') {
+                $success_count = 0;
+                foreach ($pending_items as $item) {
+                    $field_name = $item['field_name'];
+                    $new_val = $item['new_value'];
+                    
+                    if (in_array($field_name, $allowed_fields)) {
+                        $up_stud = $db->prepare("UPDATE students SET `{$field_name}` = ? WHERE id = ?");
+                        $up_stud->execute([$new_val, $student_id]);
+                        $success_count++;
+                    }
+                    
+                    $up_req = $db->prepare("UPDATE correction_requests SET status = 'Disetujui', notes = ? WHERE id = ?");
+                    $up_req->execute([$notes ?: 'Disetujui secara massal', $item['id']]);
+                }
+                set_flash_message("Semua ({$success_count}) usulan revisi siswa berhasil DISETUJUI dan langsung diterapkan.", "success");
+            } elseif ($decision === 'reject_all') {
+                $reject_count = 0;
+                foreach ($pending_items as $item) {
+                    $up_req = $db->prepare("UPDATE correction_requests SET status = 'Ditolak', notes = ? WHERE id = ?");
+                    $up_req->execute([$notes ?: 'Ditolak secara massal', $item['id']]);
+                    $reject_count++;
+                }
+                set_flash_message("Semua ({$reject_count}) usulan revisi siswa berhasil DITOLAK.", "warning");
+            }
         }
     }
     redirect('admin_dashboard.php?tab=pengajuan_revisi');
@@ -322,54 +365,140 @@ $requests = $req_stmt->fetchAll();
         <?php elseif ($current_tab === 'pengajuan_revisi'): ?>
             <div class="bg-white rounded-3xl border border-gray-150 p-6 shadow-sm">
                 <div class="flex items-center gap-2 mb-6 border-b border-gray-100 pb-3">
-                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 1 1 .512 1.353l-.041.02-.041-.02a.75.75 0 1 1 .512-1.353l.041.02ZM21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3 4.03-3 9-3 9 1.34 9 3Zm0 3c0 1.66-4.03 3-9 3s-9-1.34-9-3M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3m0-3c0 1.66-4.03 3-9 3s-9-1.34-9-3"></path></svg>
                     <h3 class="font-bold text-slate-800 text-sm">Menunggu Persetujuan Koreksi Data Mandiri</h3>
                 </div>
 
                 <?php 
                     $pending_reqs = array_filter($requests, function($r) { return $r['status'] === 'Diproses'; });
-                    if (empty($pending_reqs)): 
+                    
+                    // Group pending requests by student ID
+                    $student_groups = [];
+                    foreach ($pending_reqs as $rq) {
+                        $sid = $rq['student_id'];
+                        if (!isset($student_groups[$sid])) {
+                            // Find student avatar / class from the loaded students
+                            $student_match = null;
+                            foreach ($students as $s) {
+                                if ((int)$s['id'] === (int)$sid) {
+                                    $student_match = $s;
+                                    break;
+                                }
+                            }
+                            
+                            $student_groups[$sid] = [
+                                'id' => $sid,
+                                'name' => $rq['student_fullname'],
+                                'nisn' => $rq['student_nisn'] ?: ($student_match ? $student_match['nisn'] : ''),
+                                'kelas' => $student_match ? ($student_match['kelas_sekarang'] ?: 'X') : 'X',
+                                'foto' => $student_match ? $student_match['foto'] : null,
+                                'items' => []
+                            ];
+                        }
+                        $student_groups[$sid]['items'][] = $rq;
+                    }
+
+                    if (empty($student_groups)): 
                 ?>
                     <div class="py-12 text-center text-gray-400 font-bold">
                         <svg class="w-10 h-10 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                         <span>Sejauh ini tidak ada antrean usulan revisi data siswa yang membutuhkan tindakan verifikasi.</span>
                     </div>
                 <?php else: ?>
-                    <div class="space-y-4">
-                        <?php foreach ($pending_reqs as $rq): ?>
-                            <div class="p-5 border border-gray-150 rounded-2xl bg-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                <div class="space-y-1.5 flex-1">
-                                    <div class="flex items-center gap-2">
-                                        <span class="font-bold text-xs text-slate-800"><?= esc($rq['student_fullname']) ?> (NISN: <?= esc($rq['student_nisn']) ?>)</span>
-                                        <span class="p-0.5 px-2 bg-blue-100 text-blue-700 text-[9px] font-black rounded-lg">PROSES</span>
+                    <div class="space-y-6">
+                        <?php foreach ($student_groups as $group): ?>
+                            <div class="bg-slate-50 border border-gray-150 rounded-3xl p-5 space-y-4 shadow-sm">
+                                <!-- Student Info Header Row -->
+                                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-200 pb-4">
+                                    <div class="flex items-center gap-3">
+                                        <?php if ($group['foto']): ?>
+                                            <img src="<?= $group['foto'] ?>" class="w-10 h-10 rounded-full border border-gray-200 object-cover shrink-0">
+                                        <?php else: ?>
+                                            <div class="w-10 h-10 rounded-full bg-blue-105 text-blue-600 font-black flex items-center justify-center shrink-0 border border-blue-200 uppercase text-xs">
+                                                <?= substr($group['name'], 0, 2) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <div>
+                                            <h4 class="font-extrabold text-slate-900 text-xs leading-none mb-1.5"><?= esc($group['name']) ?></h4>
+                                            <p class="text-[10.5px] text-gray-450 leading-none">
+                                                Kelas <span class="font-bold text-blue-600 font-mono"><?= esc($group['kelas']) ?></span> &middot; 
+                                                NISN <span class="font-bold font-mono text-slate-700"><?= esc($group['nisn']) ?></span>
+                                            </p>
+                                        </div>
                                     </div>
-                                    <p class="text-[11px] text-gray-400 font-mono"><b>Kolom:</b> <?= esc($rq['field_label']) ?> (<?= esc($rq['field_name']) ?>)</p>
-                                    <div class="grid grid-cols-2 gap-4 pt-2">
-                                        <div class="bg-rose-50 border border-rose-100 p-2.5 rounded-xl">
-                                            <span class="text-[9px] font-extrabold text-rose-500 uppercase tracking-wider block mb-1">Data Lama:</span>
-                                            <span class="text-xs font-semibold text-rose-800 font-mono block whitespace-pre-wrap"><?= esc($rq['old_value'] ?: '-') ?></span>
+                                    
+                                    <!-- Bulk Actions for Student Block -->
+                                    <div class="bg-white border border-gray-150 p-2.5 rounded-2xl flex flex-col sm:flex-row sm:items-center gap-3 shrink-0 self-start lg:self-auto w-full lg:w-auto">
+                                        <div class="flex items-center gap-1.5 text-[10px] font-black uppercase text-slate-400 tracking-wider">
+                                            <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                            <span>Satu-Klik Massal (<?= count($group['items']) ?>):</span>
                                         </div>
-                                        <div class="bg-emerald-50 border border-emerald-100 p-2.5 rounded-xl">
-                                            <span class="text-[9px] font-extrabold text-emerald-500 uppercase tracking-wider block mb-1">Usulan Baru:</span>
-                                            <span class="text-xs font-semibold text-emerald-800 font-mono block whitespace-pre-wrap"><?= esc($rq['new_value'] ?: '-') ?></span>
-                                        </div>
+                                        <form method="POST" class="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                            <input type="hidden" name="action_request_bulk" value="1">
+                                            <input type="hidden" name="student_id" value="<?= $group['id'] ?>">
+                                            <input type="text" name="notes" placeholder="Catatan massal opsional..." class="px-2.5 py-1.5 border border-gray-200 rounded-xl text-[10.5px] font-medium w-full sm:w-44 focus:outline-none focus:border-blue-500">
+                                            <div class="flex gap-1.5">
+                                                <button type="submit" name="decision" value="reject_all" class="flex-1 sm:flex-none px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-[10px] font-bold transition flex items-center justify-center cursor-pointer shadow-sm shadow-rose-600/10">
+                                                    Tolak Semua
+                                                </button>
+                                                <button type="submit" name="decision" value="approve_all" class="flex-1 sm:flex-none px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-bold transition flex items-center justify-center cursor-pointer shadow-sm shadow-emerald-600/10">
+                                                    Setujui Semua
+                                                </button>
+                                            </div>
+                                        </form>
                                     </div>
                                 </div>
 
-                                <form method="POST" class="flex flex-col gap-2 w-full md:w-60 shrink-0 border-t md:border-t-0 border-gray-200 pt-4 md:pt-0">
-                                    <input type="hidden" name="action_request" value="1">
-                                    <input type="hidden" name="request_id" value="<?= $rq['id'] ?>">
-                                    
-                                    <input type="text" name="notes" placeholder="Tulis catatan penolakan jika ditolak..." class="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-xs font-medium focus:outline-none focus:border-blue-500">
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <button type="submit" name="decision" value="reject" class="py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">
-                                            Ditolak
-                                        </button>
-                                        <button type="submit" name="decision" value="approve" class="py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer">
-                                            Disetujui
-                                        </button>
+                                <!-- Requested Fields Content Grid -->
+                                <div class="overflow-hidden bg-white border border-gray-150 rounded-2xl shadow-xs">
+                                    <div class="overflow-x-auto">
+                                        <table class="w-full text-left border-collapse text-[11px] font-sans">
+                                            <thead class="bg-slate-50 border-b border-gray-150 font-bold uppercase tracking-wider text-slate-400 text-[9px]">
+                                                <tr>
+                                                    <th class="py-2.5 px-3.5 w-1/4">Elemen Data</th>
+                                                    <th class="py-2.5 px-3.5 w-1/3">Nilai Lama (Database)</th>
+                                                    <th class="py-2.5 px-3.5 w-1/3">Usulan Baru</th>
+                                                    <th class="py-2.5 px-3.5 text-right">Tindakan Admin</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-100 text-slate-700">
+                                                <?php foreach ($group['items'] as $item): ?>
+                                                    <tr class="hover:bg-slate-50/20 transition">
+                                                        <td class="py-3 px-3.5">
+                                                            <span class="font-bold text-slate-800 block"><?= esc($item['field_label']) ?></span>
+                                                            <span class="text-[9px] text-gray-400 font-mono block mt-0.5"><?= esc($item['field_name']) ?></span>
+                                                        </td>
+                                                        <td class="py-3 px-3.5">
+                                                            <div class="text-rose-800 bg-rose-50/50 border border-rose-100 px-2.5 py-1.5 rounded-xl font-mono text-[10.5px] break-all max-w-[280px]">
+                                                                <span class="line-through"><?= esc($item['old_value'] ?: '(Kosong)') ?></span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="py-3 px-3.5">
+                                                            <div class="text-emerald-800 bg-emerald-50/50 border border-emerald-100 px-2.5 py-1.5 rounded-xl font-mono font-bold text-[10.5px] break-all max-w-[280px]">
+                                                                <span><?= esc($item['new_value'] ?: '(Kosong)') ?></span>
+                                                            </div>
+                                                        </td>
+                                                        <td class="py-3 px-3.5">
+                                                            <form method="POST" class="flex items-center justify-end gap-1.5">
+                                                                <input type="hidden" name="action_request" value="1">
+                                                                <input type="hidden" name="request_id" value="<?= $item['id'] ?>">
+                                                                <input type="text" name="notes" placeholder="Alasan penolakan..." class="px-2 py-1 border border-gray-200 rounded-lg text-[10px] w-32 focus:outline-none focus:border-blue-500 font-medium">
+                                                                <div class="flex items-center gap-1 shrink-0">
+                                                                    <button type="submit" name="decision" value="reject" class="p-1 px-2.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white rounded-lg text-[9.5px] font-bold border border-rose-100 transition cursor-pointer" title="Tolak Usulan">
+                                                                        Tolak
+                                                                    </button>
+                                                                    <button type="submit" name="decision" value="approve" class="p-1 px-2.5 bg-emerald-50 hover:bg-emerald-600 text-emerald-600 hover:text-white rounded-lg text-[9.5px] font-bold border border-emerald-100 transition cursor-pointer" title="Setujui Usulan">
+                                                                        Setujui
+                                                                    </button>
+                                                                </div>
+                                                            </form>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            </tbody>
+                                        </table>
                                     </div>
-                                </form>
+                                </div>
                             </div>
                         <?php endforeach; ?>
                     </div>
